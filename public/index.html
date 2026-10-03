@@ -1,1 +1,648 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080b14" />
+  <title>BharatGPilot — AI Coding Assistant</title>
+  <style>
+    :root {
+      --bg: #080b14;
+      --panel: #101522;
+      --panel-hover: #171e30;
+      --border: #252d40;
+      --text: #f3f5fb;
+      --muted: #929bb0;
+      --accent: #8b7cff;
+      --accent2: #42d5e8;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% -20%, #1d2350 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      height: 68px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      background: rgba(8,11,20,.75);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 750;
+      letter-spacing: -.4px;
+      font-size: 18px;
+    }
+
+    .logo {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #7865ff, #32c9e5);
+      color: white;
+      font-weight: 900;
+      box-shadow: 0 0 25px rgba(117,102,255,.25);
+    }
+
+    .brand span:last-child {
+      background: linear-gradient(90deg, #fff, #b7b5ff);
+      color: transparent;
+      background-clip: text;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #35d69b;
+      box-shadow: 0 0 10px #35d69b;
+    }
+
+    main {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      padding: 42px 22px 190px;
+      flex: 1;
+    }
+
+    .welcome {
+      text-align: center;
+      padding: 40px 0 25px;
+    }
+
+    .orb {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 23px;
+      display: grid;
+      place-items: center;
+      border-radius: 22px;
+      background: linear-gradient(145deg, #26214e, #102b40);
+      border: 1px solid rgba(151,139,255,.35);
+      box-shadow: 0 0 55px rgba(99,91,255,.15);
+      font-size: 30px;
+    }
+
+    h1 {
+      font-size: clamp(30px, 5vw, 45px);
+      line-height: 1.12;
+      letter-spacing: -1.8px;
+      margin: 0 0 14px;
+      font-weight: 780;
+    }
+
+    h1 span {
+      background: linear-gradient(90deg, #a99cff, #53d8e9);
+      color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 540px;
+    }
+
+    .suggestions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 25px auto 0;
+      max-width: 650px;
+    }
+
+    .suggestion {
+      text-align: left;
+      padding: 17px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(16,21,34,.75);
+      color: var(--text);
+      transition: .2s ease;
+    }
+
+    .suggestion:hover {
+      background: var(--panel-hover);
+      border-color: #59528f;
+      transform: translateY(-2px);
+    }
+
+    .suggestion .symbol {
+      font-size: 19px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .suggestion strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 650;
+      margin-bottom: 5px;
+    }
+
+    .suggestion small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    #messages {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      line-height: 1.65;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .avatar {
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      background: #1d2540;
+      border: 1px solid var(--border);
+    }
+
+    .message.user .avatar {
+      background: #292348;
+      color: #c9c1ff;
+    }
+
+    .message.assistant .avatar {
+      background: linear-gradient(135deg, #6858d7, #168ca8);
+      border: 0;
+    }
+
+    .message-content {
+      min-width: 0;
+      flex: 1;
+      padding-top: 4px;
+      white-space: pre-wrap;
+    }
+
+    .message-content pre {
+      white-space: pre;
+      overflow-x: auto;
+      background: #080b13;
+      border: 1px solid var(--border);
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .composer-wrap {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 4;
+      padding: 22px 20px 14px;
+      background: linear-gradient(180deg, transparent, #080b14 25%);
+    }
+
+    .composer {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      border: 1px solid #30394f;
+      border-radius: 19px;
+      background: rgba(16,21,34,.96);
+      box-shadow: 0 15px 55px rgba(0,0,0,.35);
+      padding: 12px;
+      transition: border-color .2s;
+    }
+
+    .composer:focus-within {
+      border-color: #7165bd;
+    }
+
+    .context-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 3px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      margin-bottom: 8px;
+    }
+
+    .context-label {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    #repoInput {
+      width: 100%;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    #repoInput::placeholder { color: #667087; }
+
+    #prompt {
+      width: 100%;
+      resize: none;
+      min-height: 52px;
+      max-height: 180px;
+      padding: 8px 4px;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #prompt::placeholder { color: #788197; }
+
+    .composer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .composer-hint {
+      font-size: 11px;
+      color: #737d94;
+      padding-left: 4px;
+    }
+
+    .send {
+      border: 0;
+      border-radius: 12px;
+      min-width: 42px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, #7565f2, #388fc9);
+      transition: .2s;
+    }
+
+    .send:hover { filter: brightness(1.15); }
+    .send:disabled { opacity: .45; cursor: not-allowed; }
+
+    .send svg { width: 17px; height: 17px; }
+
+    .footer-note {
+      text-align: center;
+      color: #69738a;
+      font-size: 10px;
+      padding-top: 10px;
+    }
+
+    .hidden { display: none !important; }
+
+    .error {
+      color: #ff9b9b;
+      font-size: 13px;
+      padding: 10px 0;
+    }
+
+    @media (max-width: 600px) {
+      header { height: 60px; padding: 0 15px; }
+      .brand { font-size: 16px; }
+      .header-right .status-text { display: none; }
+      main { padding: 20px 15px 180px; }
+      .welcome { padding-top: 38px; }
+      .suggestions { grid-template-columns: 1fr; gap: 9px; }
+      .suggestion { padding: 13px 15px; }
+      .suggestion .symbol { display: inline-block; margin: 0 9px 0 0; }
+      .suggestion strong { display: inline; }
+      .suggestion small { display: block; padding-left: 31px; margin-top: 4px; }
+      .composer-wrap { padding: 12px 10px 10px; }
+      .composer { border-radius: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">B</div>
+        <span>BharatGPilot</span>
+      </div>
+      <div class="header-right">
+        <div class="status">
+          <span class="status-dot"></span>
+          <span class="status-text">AI assistant</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="welcome" id="welcome">
+        <div class="orb">✦</div>
+        <h1>Build something <span>brilliant.</span></h1>
+        <p class="subtitle">
+          Your AI copilot for code, GitHub repositories, debugging,
+          and turning ideas into working software.
+        </p>
+
+        <div class="suggestions">
+          <button class="suggestion" data-prompt="Explore a GitHub repository and explain its structure.">
+            <span class="symbol">⌘</span>
+            <strong>Explore a repository</strong>
+            <small>Understand a codebase and its architecture.</small>
+          </button>
+          <button class="suggestion" data-prompt="Find open issues in my repository and suggest possible fixes.">
+            <span class="symbol">◎</span>
+            <strong>Find issues and fixes</strong>
+            <small>Review GitHub issues and plan solutions.</small>
+          </button>
+          <button class="suggestion" data-prompt="Help me understand this codebase, including its main files and dependencies.">
+            <span class="symbol">⌁</span>
+            <strong>Explain my codebase</strong>
+            <small>Get a clear explanation of your project.</small>
+          </button>
+          <button class="suggestion" data-prompt="Help me design and implement a new feature in my project.">
+            <span class="symbol">✧</span>
+            <strong>Build a new feature</strong>
+            <small>Plan, write, and improve your code.</small>
+          </button>
+        </div>
+      </section>
+
+      <section id="messages" aria-live="polite"></section>
+    </main>
+
+    <div class="composer-wrap">
+      <form class="composer" id="chatForm">
+        <div class="context-row">
+          <span class="context-label">Repository</span>
+          <input
+            id="repoInput"
+            type="text"
+            placeholder="owner/repository (optional)"
+            autocomplete="off"
+          />
+        </div>
+
+        <textarea
+          id="prompt"
+          placeholder="Ask BharatGPilot anything..."
+          rows="2"
+          aria-label="Message"
+          required
+        ></textarea>
+
+        <div class="composer-bottom">
+          <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+          <button class="send" id="sendButton" type="submit" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5"></path>
+              <path d="m5 12 7-7 7 7"></path>
+            </svg>
+          </button>
+        </div>
+      </form>
+      <div class="footer-note">
+        AI can make mistakes. Review generated code before using it.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("chatForm");
+    const promptInput = document.getElementById("prompt");
+    const repoInput = document.getElementById("repoInput");
+    const sendButton = document.getElementById("sendButton");
+    const messages = document.getElementById("messages");
+    const welcome = document.getElementById("welcome");
+
+    let conversation = [];
+    let busy = false;
+
+    function addMessage(role, content = "") {
+      const wrapper = document.createElement("div");
+      wrapper.className = `message ${role}`;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = role === "user" ? "You" : "B";
+
+      const body = document.createElement("div");
+      body.className = "message-content";
+      body.textContent = content;
+
+      wrapper.append(avatar, body);
+      messages.appendChild(wrapper);
+      wrapper.scrollIntoView({ behavior: "smooth", block: "end" });
+
+      return body;
+    }
+
+    function setBusy(value) {
+      busy = value;
+      sendButton.disabled = value;
+      promptInput.disabled = value;
+      sendButton.textContent = value ? "…" : "";
+      if (!value) {
+        sendButton.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19V5"></path>
+            <path d="m5 12 7-7 7 7"></path>
+          </svg>`;
+      }
+    }
+
+    async function sendMessage(message) {
+      if (busy || !message.trim()) return;
+
+      welcome.classList.add("hidden");
+      addMessage("user", message);
+      conversation.push({ role: "user", content: message });
+
+      const assistantBody = addMessage("assistant", "");
+      const repo = repoInput.value.trim();
+      let fullResponse = "";
+
+      setBusy(true);
+
+      try {
+        const response = await fetch("/api/pilot/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            history: conversation.slice(-12),
+            repo: repo || undefined
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || `Request failed (${response.status})`);
+        }
+
+        if (!response.body) {
+          throw new Error("Streaming is not supported by this response.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+
+          for (const event of events) {
+            const lines = event.split("\n");
+            for (const line of lines) {
+              if (!line.startsWith("data:")) continue;
+              const raw = line.slice(5).trim();
+              if (!raw || raw === "[DONE]") continue;
+
+              let payload;
+              try {
+                payload = JSON.parse(raw);
+              } catch {
+                continue;
+              }
+
+              if (payload.error) throw new Error(payload.error);
+
+              const chunk =
+                payload.text ??
+                payload.delta?.text ??
+                payload.content_block?.text ??
+                "";
+
+              if (chunk) {
+                fullResponse += chunk;
+                assistantBody.textContent = fullResponse;
+              }
+            }
+          }
+        }
+
+        if (!fullResponse) {
+          fullResponse = "The assistant returned an empty response.";
+          assistantBody.textContent = fullResponse;
+        }
+
+        conversation.push({ role: "assistant", content: fullResponse });
+      } catch (error) {
+        const errorText = `Error: ${error.message}`;
+        assistantBody.textContent = errorText;
+        assistantBody.classList.add("error");
+        conversation.pop();
+      } finally {
+        setBusy(false);
+        promptInput.focus();
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = promptInput.value.trim();
+      if (!message || busy) return;
+      promptInput.value = "";
+      promptInput.style.height = "auto";
+      sendMessage(message);
+    });
+
+    promptInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    promptInput.addEventListener("input", () => {
+      promptInput.style.height = "auto";
+      promptInput.style.height =
+        Math.min(promptInput.scrollHeight, 180) + "px";
+    });
+
+    document.querySelectorAll("[data-prompt]").forEach((button) => {
+      button.addEventListener("click", () => {
+        promptInput.value = button.dataset.prompt;
+        promptInput.focus();
+        promptInput.style.height = "auto";
+        promptInput.style.height =
+          Math.min(promptInput.scrollHeight, 180) + "px";
+      });
+    });
+  </script>
+</body>
+</html>
+
