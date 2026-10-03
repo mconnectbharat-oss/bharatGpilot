@@ -53,3 +53,8 @@ desktop.ini
 
 # Optional package manager files
 # Keep package-lock.json for reproducible installs.
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
