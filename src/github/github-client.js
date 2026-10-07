@@ -29,8 +29,9 @@ export async function compareRepositoryRefs(owner, repo, base, head) {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/compare/" + encodeURIComponent(base) + "..." + encodeURIComponent(head));
 }
 
-export async function getRepositoryContents(owner, repo, path = "") {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"));
+export async function getRepositoryContents(owner, repo, path = "", ref) {
+  const query = ref ? "?ref=" + encodeURIComponent(ref) : "";
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/") + query);
 }
 
 export async function getRepositoryBlob(owner, repo, fileSha) {
