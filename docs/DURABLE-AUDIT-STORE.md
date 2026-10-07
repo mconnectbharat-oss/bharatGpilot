@@ -28,3 +28,7 @@ A failed external GitHub action does **not** release an AUTHORIZED receipt. This
 The in-memory store remains available for unit tests only.
 
 PostgreSQL transactions and serialized writes provide the persistence/concurrency boundary; GitHub branch state is still independently verified before the action.
+
+## Runtime wiring
+
+When `createPr=true`, the verified change flow creates the PostgreSQL audit store automatically unless an explicit `dependencies.auditStore` is injected. Autonomous PR creation therefore fails closed when `DATABASE_URL`/`POSTGRES_URL` is not configured. Unit tests may inject the in-memory store.
