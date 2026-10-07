@@ -125,7 +125,9 @@ export async function executeVerifiedChange({
       approved,
       changeManifest: coding.changeManifest,
       expectedBranchSha: coding.expectedBranchSha,
-      actionReceipt
+      actionReceipt,
+      expectedAction: ACTIONS.CREATE_PR,
+      expectedActorId: actorId
     });
   }
 
