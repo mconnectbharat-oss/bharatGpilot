@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   runModel,
-  getAvailableProviders
+  getAvailableProviders,
+  getAvailableModels
 } from "./src/services/model-router.js";
 import {
   registerUser,
@@ -117,9 +118,19 @@ app.get("/api/pilot/providers", (_req, res) => {
   });
 });
 
+app.get("/api/pilot/models", (_req, res) => {
+  res.json({
+    models: getAvailableModels()
+  });
+});
+
 app.post("/api/pilot/chat", async (req, res) => {
   try {
-    const { provider = "openrouter", messages } = req.body ?? {};
+    const {
+      provider = "openrouter",
+      model,
+      messages
+    } = req.body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -161,6 +172,7 @@ app.post("/api/pilot/chat", async (req, res) => {
 
     const answer = await runModel({
       provider,
+      model,
       messages: cleanMessages
     });
 
