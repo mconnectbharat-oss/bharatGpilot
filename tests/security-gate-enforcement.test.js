@@ -47,20 +47,20 @@ test("action gateway rejects an unsupported action-decision claim", async () => 
   );
 });
 
-test("action gateway accepts only the supported evidence state at its gate", async () => {
-  const receipt = receiptWithDecision("SUPPORTED", "DIRECT");
+test("action gateway verifies receipt integrity after the evidence gate", async () => {
+  const receipt = { ...receiptWithDecision("SUPPORTED", "DIRECT"), receiptHash: "0".repeat(64) };
   await assert.rejects(
     () => createActionPullRequest({
       owner: "mconnectbharat-oss",
       repo: "bharatGpilot",
       branchName: "ci-test",
       baseRef: "main",
-      title: "network call intentionally not reached",
+      title: "should not create",
       review: { decision: "VERIFIED" },
       changeManifest: receipt.manifest,
       expectedBranchSha: receipt.branchHeadSha,
       actionReceipt: receipt
     }),
-    /Authorization receipt is not durably persisted|Target branch changed|Base branch changed|Immutable action receipt is invalid/
+    /Immutable action receipt is invalid/
   );
 });
