@@ -25,6 +25,10 @@ export async function getRepository(owner, repo) {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo));
 }
 
+export async function compareRepositoryRefs(owner, repo, base, head) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/compare/" + encodeURIComponent(base) + "..." + encodeURIComponent(head));
+}
+
 export async function getRepositoryContents(owner, repo, path = "") {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"));
 }
