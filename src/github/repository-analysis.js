@@ -90,6 +90,7 @@ export function analyzeRepositorySignals(inspection) {
     },
     findings,
     recommendations,
-    evidence
+    evidence,
+    claims
   };
 }
