@@ -3,6 +3,7 @@ name: BharatGPilot CI
 on:
   pull_request:
     branches: [main]
+  merge_group:
   push:
     branches: [main]
 
@@ -30,10 +31,23 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
 
       - name: Install dependencies
         run: npm install --ignore-scripts
 
       - name: Run test suite
         run: npm test
+
+  security-gate:
+    name: Security gate
+    if: ${{ always() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI matrix job to pass
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          test "$TEST_RESULT" = "success"
+          echo "All required BharatGPilot CI matrix checks passed."
