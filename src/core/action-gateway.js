@@ -30,7 +30,7 @@ function createManifest(changes) {
     if (Buffer.byteLength(change.content, "utf8") > MAX_FILE_BYTES) throw new Error("Change manifest file size exceeded.");
     return Object.freeze({
       path: change.path,
-      contentSha256: Buffer.from(change.content, "utf8").toString("base64"),
+      contentFingerprint: Buffer.from(change.content, "utf8").toString("base64"),
       bytes: Buffer.byteLength(change.content, "utf8"),
       message: change.message
     });
