@@ -7,6 +7,7 @@ import { ACTIONS } from "../core/permissions.js";
 import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
+import { createActionReceipt } from "./action-receipt.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
@@ -77,8 +78,22 @@ export async function executeVerifiedChange({
     plan: secured.plan,
     analysis,
     changeVerification,
+    actionReceipt,
     testResult: recorded.testResult,
     security: secured.security
+  });
+
+  const actionReceipt = createActionReceipt({
+    review: initialReview,
+    repository: plan.repository,
+    baseSha: coding.branch.baseSha,
+    manifest: coding.changeManifest,
+    branchName: coding.branch.branchName,
+    changeVerification,
+    testResult: recorded.testResult,
+    security: secured.security,
+    finalReview: reviewed.review,
+    branchHeadSha: coding.expectedBranchSha
   });
 
   let pullRequest = null;
@@ -93,7 +108,8 @@ export async function executeVerifiedChange({
       review: reviewed.review,
       approved,
       changeManifest: coding.changeManifest,
-      expectedBranchSha: coding.expectedBranchSha
+      expectedBranchSha: coding.expectedBranchSha,
+      actionReceipt
     });
   }
 

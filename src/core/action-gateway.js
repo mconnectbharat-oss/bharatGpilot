@@ -1,5 +1,6 @@
 import { githubRequest, getRepository, getRepositoryContents, getRepositoryRef } from "../github/github-client.js";
 import { ACTIONS, assertActionAllowed } from "./permissions.js";
+import { verifyActionReceipt } from "./action-receipt.js";
 
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 100_000;
@@ -85,18 +86,25 @@ export function validateChangeManifest(changes) {
   return createManifest(changes);
 }
 
-export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest, expectedBranchSha } = {}) {
+export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest, expectedBranchSha, actionReceipt } = {}) {
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_PR, { approved });
   if (!owner || !repo || !branchName || !title) throw new Error("owner, repo, branchName, and title are required.");
   if (!expectedBranchSha) throw new Error("Expected branch SHA is required before PR creation.");
+  const receiptCheck = verifyActionReceipt(actionReceipt);
+  if (receiptCheck.status !== "VERIFIED") throw new Error("Immutable action receipt is invalid.");
+  if (actionReceipt.finalReview?.decision !== "VERIFIED" || actionReceipt.changeVerification?.status !== "VERIFIED") throw new Error("Action receipt does not contain verified authorization results.");
+  if (JSON.stringify(actionReceipt.manifest) !== JSON.stringify(changeManifest)) throw new Error("Action receipt manifest does not match the requested manifest.");
+  if (actionReceipt.repository.owner !== owner || actionReceipt.repository.repo !== repo || actionReceipt.repository.ref !== (baseRef || "main") || actionReceipt.branchName !== branchName || actionReceipt.branchHeadSha !== expectedBranchSha) throw new Error("Action receipt does not match the requested repository state.");
   const branchRef = await getRepositoryRef(owner, repo, branchName);
   if (branchRef?.object?.sha !== expectedBranchSha) throw new Error("Target branch changed after verification.");
+  const baseRefState = await getRepositoryRef(owner, repo, baseRef || "main");
+  if (baseRefState?.object?.sha !== actionReceipt.baseSha) throw new Error("Base branch changed since authorization.");
   if (!changeManifest?.version || !Array.isArray(changeManifest.files) || changeManifest.files.length === 0) throw new Error("A change manifest is required before PR creation.");
   const result = await githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls", {
     method: "POST",
     body: JSON.stringify({ title, body: body || "", head: branchName, base: baseRef || "main", draft: true }),
     headers: { "Content-Type": "application/json" }
   });
-  return Object.freeze({ number: result.number, url: result.html_url, state: result.state, draft: result.draft, changeManifest });
+  return Object.freeze({ number: result.number, url: result.html_url, state: result.state, draft: result.draft, changeManifest, actionReceipt });
 }

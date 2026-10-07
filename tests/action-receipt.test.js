@@ -1,0 +1,28 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createActionReceipt, verifyActionReceipt } from "../src/core/action-receipt.js";
+
+const context = {
+  review: { decision: "VERIFIED", reasons: [] },
+  repository: { owner: "owner", repo: "repo", ref: "main" },
+  baseSha: "base-123",
+  manifest: { version: 1, files: [{ path: "src/a.js", bytes: 1, contentFingerprint: "eA==", message: "change" }] },
+  branchName: "feature/a",
+  changeVerification: { status: "VERIFIED", approved: ["src/a.js"], unexpected: [], missing: [] },
+  testResult: { status: "passed" },
+  security: { findings: [] },
+  finalReview: { decision: "VERIFIED" },
+  branchHeadSha: "head-456"
+};
+
+test("receipt is content-addressed and verifies unchanged", () => {
+  const receipt = createActionReceipt(context);
+  assert.equal(verifyActionReceipt(receipt).status, "VERIFIED");
+  assert.equal(receipt.receiptHash.length, 64);
+});
+
+test("receipt detects authorization tampering", () => {
+  const receipt = createActionReceipt(context);
+  const tampered = { ...receipt, branchHeadSha: "other-head" };
+  assert.equal(verifyActionReceipt(tampered).status, "INVALID");
+});
