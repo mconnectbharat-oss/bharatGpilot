@@ -14,11 +14,8 @@ function scanText(path, content) {
     if (rule.pattern.test(content || "")) {
       rule.pattern.lastIndex = 0;
       findings.push({
-        id: rule.id,
-        path,
-        class: "DIRECT",
-        claim: rule.claim,
-        source: `repository file: ${path}`
+        id: rule.id, path, class: "DIRECT",
+        claim: rule.claim, source: "repository file: " + path
       });
     }
     rule.pattern.lastIndex = 0;
@@ -29,15 +26,12 @@ function scanText(path, content) {
 export function reviewSecurity(plan, inspection) {
   if (!plan?.repository) throw new Error("A repository is required for security review.");
   if (!inspection) throw new Error("Repository inspection is required for security review.");
-
   assertActionAllowed(ACTIONS.ANALYZE_CODE);
 
   const findings = [];
-  for (const item of inspection.analyzedContents || []) {
-    findings.push(...scanText(item.path, item.content));
-  }
+  for (const item of inspection.analyzedContents || []) findings.push(...scanText(item.path, item.content));
 
-  let next = markStep(plan, "security_reviewer", "running");
+  let next = markStep(plan, "security", "running");
   for (const finding of findings) next = addEvidence(next, finding);
 
   if (findings.length === 0) {
@@ -48,8 +42,7 @@ export function reviewSecurity(plan, inspection) {
     });
   }
 
-  next = markStep(next, "security_reviewer", "completed");
-
+  next = markStep(next, "security", "completed");
   return {
     plan: next,
     security: {
