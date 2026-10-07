@@ -6,6 +6,7 @@ import { reviewSecurity } from "./security-reviewer.js";
 import { finalReview, actionDisposition } from "./final-reviewer.js";
 import { executeRepositoryTests } from "../sandbox/execution.js";
 import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
+import { buildMajorClaimChains } from "../core/major-claim-gate.js";
 
 export async function analyzeRepository(plan, inspection, dependencies = {}) {
   if (!plan?.repository) throw new Error("A repository is required for repository analysis.");
