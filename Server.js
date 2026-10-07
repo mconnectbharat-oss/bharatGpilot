@@ -18,6 +18,7 @@ import { getActionPolicySnapshot } from "./src/core/permissions.js";
 import { createInvestigationPlan } from "./src/core/orchestrator.js";
 import { createResearchPlan } from "./src/core/planner.js";
 import { researchRepository } from "./src/core/researcher.js";
+import { analyzeRepository } from "./src/agents/repository-analyst.js";
 import { inspectRepository } from "./src/github/repository-intelligence.js";
 import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
 
@@ -84,8 +85,9 @@ app.post("/api/pilot/investigate", requireAuth, async (req, res) => {
       request: req.body?.request,
       repository: req.body?.repository
     });
-    const result = await researchRepository(plan);
-    res.json(result);
+    const researched = await researchRepository(plan);
+    const analyzed = analyzeRepository(researched.plan, researched.inspection);
+    res.json({ ...analyzed, inspection: researched.inspection });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
