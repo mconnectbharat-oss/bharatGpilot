@@ -1,4 +1,4 @@
-import { githubRequest, getRepository, getRepositoryContents, getRepositoryRef } from "../github/github-client.js";
+import { githubRequest, getRepository, getRepositoryContents, getRepositoryRef, getCommitCheckRuns } from "../github/github-client.js";
 import { ACTIONS, assertActionAllowed } from "./permissions.js";
 import { verifyActionReceipt } from "./action-receipt.js";
 
@@ -9,6 +9,20 @@ const SENSITIVE_FILES = new Set(["package-lock.json", "npm-shrinkwrap.json", "ya
 
 function assertSafePath(path) {
   if (!path || path.startsWith("/") || path.includes("\0") || path.split("/").includes("..")) throw new Error("Unsafe repository path.");
+}
+
+const REQUIRED_CI_CHECKS = Object.freeze((process.env.BHARATGPILOT_REQUIRED_CI_CHECKS || "Node 20.x,Node 22.x,Node 24.x").split(",").map((value) => value.trim()).filter(Boolean));
+
+export async function verifyRequiredCiChecks(owner, repo, ref) {
+  const data = await getCommitCheckRuns(owner, repo, ref);
+  const runs = Array.isArray(data?.check_runs) ? data.check_runs : [];
+  const results = REQUIRED_CI_CHECKS.map((name) => {
+    const matches = runs.filter((run) => run.name === name);
+    const latest = matches.sort((a, b) => String(b.completed_at || b.started_at || "").localeCompare(String(a.completed_at || a.started_at || "")))[0];
+    return Object.freeze({ name, status: latest?.status || "missing", conclusion: latest?.conclusion || null });
+  });
+  const verified = results.length > 0 && results.every((result) => result.status === "completed" && result.conclusion === "success");
+  return Object.freeze({ status: verified ? "VERIFIED" : "UNVERIFIED", ref, checks: Object.freeze(results) });
 }
 
 function assertVerified(review) {
@@ -92,6 +106,8 @@ export async function createActionPullRequest({ owner, repo, branchName, baseRef
   if (!owner || !repo || !branchName || !title) throw new Error("owner, repo, branchName, and title are required.");
   if (!expectedBranchSha) throw new Error("Expected branch SHA is required before PR creation.");
   const receiptCheck = verifyActionReceipt(actionReceipt);
+  const ciVerification = await verifyRequiredCiChecks(owner, repo, expectedBranchSha);
+  if (ciVerification.status !== "VERIFIED") throw new Error("Required CI checks have not all passed for the exact action branch commit.");
   const actionClaim = actionReceipt?.finalReview?.claims?.find((claim) => claim.id === "action-decision");
   if (actionClaim?.status !== "SUPPORTED") throw new Error("Autonomous action requires a DIRECTLY supported action-decision evidence chain.");
   if (auditStore) {
