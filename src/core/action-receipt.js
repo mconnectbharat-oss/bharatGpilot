@@ -13,14 +13,19 @@ function digest(value) {
 }
 
 export function createActionReceipt({
+  actionId, action = "CREATE_PR", actorId = "system", issuedAt = new Date().toISOString(),
   review, repository, baseSha, manifest, branchName, changeVerification,
   testResult, security, finalReview, branchHeadSha
 } = {}) {
-  if (!review || !repository?.owner || !repository?.repo || !baseSha || !manifest?.version || !branchName) {
+  if (!actionId || !actorId || !action || !review || !repository?.owner || !repository?.repo || !baseSha || !manifest?.version || !branchName) {
     throw new Error("Complete authorization context is required for an action receipt.");
   }
   const authorization = Object.freeze({
-    version: 1,
+    version: 2,
+    actionId,
+    action,
+    actorId,
+    issuedAt,
     repository: Object.freeze({ owner: repository.owner, repo: repository.repo, ref: repository.ref || "main" }),
     baseSha,
     branchName,
