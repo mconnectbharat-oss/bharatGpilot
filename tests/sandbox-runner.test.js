@@ -14,5 +14,5 @@ test("clamps sandbox policy limits", () => {
 });
 
 test("requires an explicit workspace for allowed execution", async () => {
-  await assert.rejects(() => runSandboxedTest({ command: "node --test" }), /workspace directory is required/);
+  assert.throws(() => runSandboxedTest({ command: "node --test" }), /workspace directory is required/);
 });
