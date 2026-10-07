@@ -15,7 +15,7 @@ function scanText(path, content) {
     if (rule.pattern.test(content || "")) {
       rule.pattern.lastIndex = 0;
       findings.push({
-        id: rule.id, path, class: "DIRECT",
+        id: rule.id, path, classification: "DIRECT",
         claim: rule.claim, source: "repository file: " + path
       });
     }
@@ -37,7 +37,7 @@ export function reviewSecurity(plan, inspection) {
 
   if (findings.length === 0) {
     next = addEvidence(next, {
-      class: "NO EVIDENCE FOUND",
+      classification: "NO EVIDENCE FOUND",
       claim: "No high-risk pattern was detected in the bounded content sample; this is not proof of security.",
       source: "bounded static security scan"
     });
