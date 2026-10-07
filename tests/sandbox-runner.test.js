@@ -4,7 +4,7 @@ import { SANDBOX_COMMANDS, createSandboxPolicy, runSandboxedTest } from "../src/
 
 test("allows only explicit test commands", () => {
   assert.deepEqual(Object.keys(SANDBOX_COMMANDS), ["npm test", "node --test"]);
-  assert.throws(() => runSandboxedTest({ command: "npm install" }), /not allowed/);
+  assert.throws(() => runSandboxedTest({ command: "npm install", cwd: process.cwd() }), /not allowed/);
 });
 
 test("clamps sandbox policy limits", () => {
@@ -13,12 +13,6 @@ test("clamps sandbox policy limits", () => {
   assert.equal(policy.maxOutputBytes, 200000);
 });
 
-test("runs an allowed node test command when given a workspace", async () => {
-  const result = await runSandboxedTest({
-    command: "node --test",
-    cwd: process.cwd(),
-    timeoutMs: 10000
-  });
-  assert.equal(result.status, "passed");
-  assert.equal(result.timedOut, false);
+test("requires an explicit workspace for allowed execution", async () => {
+  await assert.rejects(() => runSandboxedTest({ command: "node --test" }), /workspace directory is required/);
 });
