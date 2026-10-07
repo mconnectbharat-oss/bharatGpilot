@@ -9,7 +9,6 @@ import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
 import { createActionReceipt } from "./action-receipt.js";
-import { randomUUID } from "node:crypto";
 import { createAuditRecord, appendAuditRecord } from "./audit-log.js";
 
 export async function executeVerifiedChange({
