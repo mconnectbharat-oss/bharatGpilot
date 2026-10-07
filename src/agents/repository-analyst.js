@@ -4,8 +4,9 @@ import { ACTIONS, assertActionAllowed } from "../core/permissions.js";
 import { createTestPlan, recordTestResult } from "./tester.js";
 import { reviewSecurity } from "./security-reviewer.js";
 import { finalReview, actionDisposition } from "./final-reviewer.js";
+import { executeRepositoryTests } from "../sandbox/execution.js";
 
-export function analyzeRepository(plan, inspection) {
+export async function analyzeRepository(plan, inspection, dependencies = {}) {
   if (!plan?.repository) throw new Error("A repository is required for repository analysis.");
   if (!inspection) throw new Error("Repository inspection is required for analysis.");
   assertActionAllowed(ACTIONS.ANALYZE_CODE);
@@ -22,10 +23,22 @@ export function analyzeRepository(plan, inspection) {
   next = markStep(next, "repository", "completed");
 
   const planned = createTestPlan(next, inspection);
+  const owner = plan.repository.owner;
+  const repo = plan.repository.repo;
+  const testExecution = await (dependencies.executeRepositoryTests || executeRepositoryTests)({
+    owner,
+    repo,
+    ref: plan.repository.ref,
+    command: planned.testPlan.command,
+    adapters: dependencies.executionAdapters || {}
+  });
   const tested = recordTestResult(planned.plan, planned.testPlan, {
-    status: "not_executed",
-    claim: "Sandbox execution was not performed during this investigation.",
-    source: "authenticated investigation pipeline"
+    status: testExecution.status,
+    claim: testExecution.status === "not_executed"
+      ? "Sandbox execution was not performed because an isolated runtime was unavailable."
+      : "Sandbox test execution completed with an explicit result.",
+    source: testExecution.status === "not_executed" ? testExecution.reason : "isolated sandbox execution",
+    output: testExecution.execution?.output || null
   });
   const secured = reviewSecurity(tested.plan, inspection);
   const reviewed = finalReview({
@@ -46,7 +59,7 @@ export function analyzeRepository(plan, inspection) {
     pipeline: {
       status: "completed",
       stages: ["planner", "researcher", "repository_analyst", "tester", "security_reviewer", "final_reviewer", "action_gate"],
-      sandbox: "NOT_EXECUTED"
+      sandbox: testExecution.execution === "NOT_EXECUTED" ? "NOT_EXECUTED" : "EXECUTED"
     }
   };
 }
