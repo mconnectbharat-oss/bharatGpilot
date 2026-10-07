@@ -1,4 +1,4 @@
-import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
+import { createEvidence, EVIDENCE_CLASSES, createClaim } from "../evidence/index.js";
 import { extractProjectUnderstanding } from "./semantic-analysis.js";
 import { evaluateRepositoryHealth, rankContributionOpportunities } from "./health-contributions.js";
 
@@ -11,21 +11,20 @@ export function analyzeRepositorySignals(inspection) {
   const evidence = [];
   const findings = [];
   const recommendations = [];
+  const claims = [];
 
   function direct(claim, location, detail = null) {
-    evidence.push(createEvidence({
-      claim,
-      classification: EVIDENCE_CLASSES.DIRECT,
-      sources: [{ type: "github_analysis", location, detail }]
-    }));
+    const item = createEvidence({ claim, classification: EVIDENCE_CLASSES.DIRECT, sources: [{ type: "github_analysis", location, detail }] });
+    const id = `claim-${claims.length + 1}`;
+    claims.push(createClaim({ id, statement: claim, evidence: [{ id: `${id}:e1`, classification: item.classification, source: item.sources[0] || null }] }));
+    evidence.push(item);
   }
 
   function noEvidence(claim, location) {
-    evidence.push(createEvidence({
-      claim,
-      classification: EVIDENCE_CLASSES.NO_EVIDENCE_FOUND,
-      sources: [{ type: "github_analysis", location }]
-    }));
+    const item = createEvidence({ claim, classification: EVIDENCE_CLASSES.NO_EVIDENCE_FOUND, sources: [{ type: "github_analysis", location }] });
+    const id = `claim-${claims.length + 1}`;
+    claims.push(createClaim({ id, statement: claim, evidence: [{ id: `${id}:e1`, classification: item.classification, source: item.sources[0] || null }] }));
+    evidence.push(item);
   }
 
   if (signals.hasReadme) {
@@ -91,6 +90,7 @@ export function analyzeRepositorySignals(inspection) {
     },
     findings,
     recommendations,
-    evidence
+    evidence,
+    claims
   };
 }
