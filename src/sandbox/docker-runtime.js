@@ -28,7 +28,9 @@ export function createDockerRuntimeContract(options = {}) {
 export function buildDockerRunArgs({ image = DEFAULT_IMAGE, workspacePath, command = "npm test", contract } = {}) {
   assertRuntimeContract(contract);
   if (!workspacePath) throw new Error("workspacePath is required.");
-  return ["run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=64m", "--mount", `type=bind,src=${workspacePath},dst=/workspace,rw`, "--workdir", "/workspace", "--user", "65532:65532", "--env", "NODE_ENV=test", image, "sh", "-lc", command];
+  const pinnedImage = assertPinnedImage(image);
+  const normalized = normalizeCommand(command);
+  return ["run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=64m", "--mount", `type=bind,src=${workspacePath},dst=/workspace,rw`, "--workdir", "/workspace", "--user", "65532:65532", "--env", "NODE_ENV=test", "--pull", "never", pinnedImage, "sh", "-lc", normalized === "npm test" ? "npm test" : "node --test"];
 }
 
 export async function runDockerRuntime({ workspacePath, command = "npm test", image = DEFAULT_IMAGE, contract = createDockerRuntimeContract() } = {}) {
@@ -49,6 +51,7 @@ export async function runDockerRuntime({ workspacePath, command = "npm test", im
 
 export function createDockerRuntimeAdapter(options = {}) {
   const contract = createDockerRuntimeContract(options);
+  assertPinnedImage(options.image || DEFAULT_IMAGE);
   if (contract.status !== RUNTIME_STATUS.READY) throw new Error(contract.reason);
   return Object.freeze({ contract, run: (request) => runDockerRuntime({ ...request, contract }) });
 }
