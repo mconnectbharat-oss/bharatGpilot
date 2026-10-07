@@ -1,12 +1,12 @@
 import { ACTIONS, assertActionAllowed } from "../core/permissions.js";
-import { markStep, summarizeEvidence } from "../core/orchestrator.js";
+import { markStep, verificationSummary } from "../core/orchestrator.js";
 import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
 
 export const REVIEW_DECISIONS = Object.freeze({ VERIFIED: "VERIFIED", HUMAN_REVIEW_REQUIRED: "HUMAN_REVIEW_REQUIRED", BLOCKED: "BLOCKED" });
 
 export function finalReview({ plan, analysis, testResult, security } = {}) {
   if (!plan?.repository) throw new Error("A repository is required for final review.");
-  const evidence = summarizeEvidence(plan.evidence || []);
+  const evidence = verificationSummary(plan);
   const findings = security?.findings || [];
   const status = testResult?.status || "not_executed";
   let decision = REVIEW_DECISIONS.VERIFIED;
