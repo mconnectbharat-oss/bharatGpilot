@@ -5,6 +5,8 @@ import { reviewSecurity } from "./security-reviewer.js";
 import { finalReview, actionDisposition } from "./final-reviewer.js";
 import { ACTIONS } from "../core/permissions.js";
 import { inspectRepository } from "../github/repository-intelligence.js";
+import { verifyBranchAgainstManifest } from "./change-verifier.js";
+import { createActionPullRequest } from "./action-gateway.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
@@ -39,6 +41,17 @@ export async function executeVerifiedChange({
     createPr: false
   });
 
+  const changeVerification = await (dependencies.verifyBranchAgainstManifest || verifyBranchAgainstManifest)({
+    owner: plan.repository.owner,
+    repo: plan.repository.repo,
+    baseRef: plan.repository.ref,
+    branchName: coding.branch.branchName,
+    manifest: coding.changeManifest
+  });
+  if (changeVerification.status !== "VERIFIED") {
+    return Object.freeze({ status: "blocked", stage: "change_verification", coding, changeVerification });
+  }
+
   const tested = await (dependencies.executeRepositoryTests || executeRepositoryTests)({
     owner: plan.repository.owner,
     repo: plan.repository.repo,
@@ -63,25 +76,24 @@ export async function executeVerifiedChange({
   const reviewed = finalReview({
     plan: secured.plan,
     analysis,
+    changeVerification,
     testResult: recorded.testResult,
     security: secured.security
   });
 
   let pullRequest = null;
   if (createPr && reviewed.review.decision === "VERIFIED") {
-    const finalCoding = await (dependencies.codingAgent || executeCodingPlan)({
+    pullRequest = await createActionPullRequest({
       owner: plan.repository.owner,
       repo: plan.repository.repo,
-      baseRef: plan.repository.ref,
       branchName: coding.branch.branchName,
-      changes: [],
+      baseRef: plan.repository.ref,
+      title: prTitle,
+      body: prBody,
       review: reviewed.review,
-      createPr: true,
-      prTitle,
-      prBody,
-      approved
-    }).catch(() => null);
-    pullRequest = finalCoding?.pullRequest || null;
+      approved,
+      changeManifest: coding.changeManifest
+    });
   }
 
   return Object.freeze({
