@@ -1,21 +1,28 @@
-# Repository intelligence
+# Repository content analysis
 
-The analysis foundation now uses GitHub's recursive Git tree API to index repository paths in addition to metadata, README, issues, pull requests, and releases.
+BharatGPilot now performs bounded content ingestion after recursive tree indexing.
 
-## Recursive indexing
+## What is ingested
 
-The indexed result separates:
+Candidate files are limited to 200 files and approximately 1 MB per file. Candidates include common project manifests, core documentation, and common source-code extensions.
 
-- `indexedFiles`: file paths, sizes, and Git object SHAs returned by GitHub
-- `indexedDirectories`: directory paths returned by GitHub
-- `treeTruncated`: whether GitHub reported that the recursive response was truncated
+GitHub's Git blob API supports blob retrieval up to 100 MB, but BharatGPilot deliberately uses a much smaller application-level bound to keep repository analysis predictable. citeturn0search2turn0search1
 
-GitHub documents a maximum recursive tree response of 100,000 entries / 7 MB. When GitHub reports truncation, BharatGPilot marks complete indexing as **NO EVIDENCE FOUND** rather than treating the partial tree as complete.
+## What is derived
 
-## Current limitations
+The deterministic structure analyzer reports:
 
-- File contents are not yet ingested; this layer indexes paths and Git metadata.
-- Issues/PRs/releases are capped to the first 20 results per endpoint.
-- Health scoring and contribution recommendations are not yet implemented.
-- Authentication still uses the foundation's process-local store.
-- GitHub App installation credentials are not implemented yet.
+- file and extension counts
+- manifest files
+- documentation files
+- likely entrypoints
+- analyzed content paths
+- presence signals for README, tests, CI workflows, package manifests, and SECURITY.md
+
+These are **signals**, not claims that a project is healthy, production-ready, secure, or easy to contribute to.
+
+## Evidence discipline
+
+Unavailable or oversized content is skipped rather than interpreted as evidence that the corresponding file is absent or empty.
+
+Recursive-tree truncation remains explicit and prevents BharatGPilot from treating an incomplete index as a complete repository model.
