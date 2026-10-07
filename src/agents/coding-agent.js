@@ -1,5 +1,5 @@
 import { ACTIONS, assertActionAllowed } from "../core/permissions.js";
-import { createActionBranch, applyFileChange, createActionPullRequest } from "../core/action-gateway.js";
+import { createActionBranch, applyFileChange, createActionPullRequest, validateChangeManifest } from "../core/action-gateway.js";
 
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 100_000;
@@ -26,20 +26,21 @@ export async function executeCodingPlan({ owner, repo, baseRef, branchName, chan
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_BRANCH);
   const safeChanges = validateChanges(changes);
+  const changeManifest = validateChangeManifest(safeChanges);
   const branch = await createActionBranch({ owner, repo, baseRef, branchName, review });
 
   const commits = [];
   for (const change of safeChanges) {
-    commits.push(await applyFileChange({ owner, repo, branchName: branch.branchName, path: change.path, content: change.content, message: change.message, review }));
+    commits.push(await applyFileChange({ owner, repo, branchName: branch.branchName, path: change.path, content: change.content, message: change.message, review, approved: Boolean(change.approved), expectedSha: change.expectedSha }));
   }
 
   let pullRequest = null;
   if (createPr) {
     pullRequest = await createActionPullRequest({
       owner, repo, branchName: branch.branchName, baseRef: branch.baseRef,
-      title: prTitle, body: prBody, review, approved
+      title: prTitle, body: prBody, review, approved, changeManifest
     });
   }
 
-  return Object.freeze({ branch, commits, pullRequest });
+  return Object.freeze({ branch, changeManifest, commits, pullRequest });
 }
