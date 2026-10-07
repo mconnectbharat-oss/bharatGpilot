@@ -16,6 +16,7 @@ import {
 } from "./src/security/auth.js";
 import { getActionPolicySnapshot } from "./src/core/permissions.js";
 import { createInvestigationPlan } from "./src/core/orchestrator.js";
+import { inspectRepository } from "./src/github/repository-intelligence.js";
 
 
 dotenv.config();
@@ -71,6 +72,15 @@ app.post("/api/pilot/plan", requireAuth, (req, res) => {
     res.json(createInvestigationPlan(req.body?.request));
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => {
+  try {
+    const result = await inspectRepository(req.params.owner + "/" + req.params.repo);
+    res.json(result);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
   }
 });
 
