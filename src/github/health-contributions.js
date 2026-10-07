@@ -1,4 +1,5 @@
 import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
+import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
 
 const WEIGHTS = Object.freeze({ documentation: 20, testing: 25, ci: 20, security: 15, structure: 20 });
 
