@@ -53,3 +53,21 @@ test("audit store atomically claims a receipt before an action", async () => {
   await releaseAuditReceipt(store, receipt.receiptHash, "action-claim");
   await claimAuditReceipt(store, receipt.receiptHash, "action-other");
 });
+
+
+test("transactional audit adapter exposes durable receipt lifecycle", async () => {
+  const calls = [];
+  const adapter = {
+    async claim(hash, actionId, receipt) { calls.push(["claim", hash, actionId, receipt.receiptHash]); return true; },
+    async append(record) { calls.push(["append", record.receiptHash]); return record; },
+    async complete(hash, actionId, pr) { calls.push(["complete", hash, actionId, pr.number]); return true; },
+    async release(hash, actionId) { calls.push(["release", hash, actionId]); return true; },
+    async hasReceipt(hash) { return hash === receipt.receiptHash; }
+  };
+  const store = (await import("../src/core/audit-log.js")).createTransactionalAuditStore(adapter);
+  await store.claim(receipt.receiptHash, "action-1", receipt);
+  await store.append({ receiptHash: receipt.receiptHash, actionId: "action-1" });
+  await store.complete(receipt.receiptHash, "action-1", { number: 123 });
+  assert.deepEqual(calls.map(([name]) => name), ["claim", "append", "complete"]);
+  assert.equal(await store.hasReceipt(receipt.receiptHash), true);
+});
