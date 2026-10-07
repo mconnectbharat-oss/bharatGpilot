@@ -8,7 +8,10 @@ export function createTestPlan(plan, inspection) {
   if (!inspection) throw new Error("Repository inspection is required for test planning.");
   assertActionAllowed(ACTIONS.RUN_SANDBOXED_TESTS);
 
-  const packageContent = (inspection.analyzedContents || []).find((item) => item.path === "package.json")?.content;
+  const analyzed = inspection.analyzedContents || [];
+  const packageContent = Array.isArray(analyzed)
+    ? analyzed.find((item) => item.path === "package.json")?.content
+    : analyzed["package.json"];
   let testCommand = DEFAULT_TEST_COMMAND;
   let packageScripts = {};
 
