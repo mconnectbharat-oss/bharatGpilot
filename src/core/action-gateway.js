@@ -93,6 +93,8 @@ export async function createActionPullRequest({ owner, repo, branchName, baseRef
   if (!expectedBranchSha) throw new Error("Expected branch SHA is required before PR creation.");
   const receiptCheck = verifyActionReceipt(actionReceipt);
   if (receiptCheck.status !== "VERIFIED") throw new Error("Immutable action receipt is invalid.");
+  if (actionReceipt.finalReview?.decision !== "VERIFIED" || actionReceipt.changeVerification?.status !== "VERIFIED") throw new Error("Action receipt does not contain verified authorization results.");
+  if (JSON.stringify(actionReceipt.manifest) !== JSON.stringify(changeManifest)) throw new Error("Action receipt manifest does not match the requested manifest.");
   if (actionReceipt.repository.owner !== owner || actionReceipt.repository.repo !== repo || actionReceipt.repository.ref !== (baseRef || "main") || actionReceipt.branchName !== branchName || actionReceipt.branchHeadSha !== expectedBranchSha) throw new Error("Action receipt does not match the requested repository state.");
   const branchRef = await getRepositoryRef(owner, repo, branchName);
   if (branchRef?.object?.sha !== expectedBranchSha) throw new Error("Target branch changed after verification.");
