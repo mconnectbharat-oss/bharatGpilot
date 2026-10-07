@@ -27,3 +27,12 @@ test("receipt detects authorization tampering", () => {
   const tampered = { ...receipt, branchHeadSha: "other-head" };
   assert.equal(verifyActionReceipt(tampered).status, "INVALID");
 });
+
+
+test("receipt binds action identity", () => {
+  const receipt = createActionReceipt(context);
+  assert.equal(receipt.actionId, "action-1");
+  assert.equal(receipt.action, "CREATE_PR");
+  assert.equal(receipt.actorId, "user-1");
+  assert.equal(verifyActionReceipt(receipt).status, "VERIFIED");
+});
