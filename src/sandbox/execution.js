@@ -1,6 +1,5 @@
 import { provisionWorkspace } from "./workspace.js";
 import { materializeRepository } from "./materializer.js";
-import { runSandboxedTest } from "./runner.js";
 import { createDockerRuntimeAdapter } from "./docker-runtime.js";
 
 export async function executeRepositoryTests({ owner, repo, ref, command = "npm test", adapters = {} } = {}) {
@@ -28,13 +27,7 @@ export async function executeRepositoryTests({ owner, repo, ref, command = "npm 
       workspacePath: workspace.path
     });
 
-    const execution = adapters.runtimeAdapter
-      ? await runtimeAdapter.run({ command, workspacePath: workspace.path })
-      : await (adapters.runSandboxedTest || runSandboxedTest)({
-          command,
-          cwd: workspace.path,
-          workspacePolicy: workspace
-        });
+    const execution = await runtimeAdapter.run({ command, workspacePath: workspace.path });
 
     return Object.freeze({
       status: execution.status,
