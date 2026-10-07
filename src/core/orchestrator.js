@@ -35,7 +35,10 @@ export function addEvidence(plan, input) {
 export function markStep(plan, stepId, status) {
   const allowed = new Set(["pending", "running", "completed", "blocked"]);
   if (!allowed.has(status)) throw new Error("Invalid step status.");
-  const steps = plan.steps.map((step) => step.id === stepId ? { ...step, status } : step);
+  const found = plan.steps.some((step) => step.id === stepId);
+  const steps = found
+    ? plan.steps.map((step) => step.id === stepId ? { ...step, status } : step)
+    : [...plan.steps, { id: stepId, agent: stepId, status }];
   return { ...plan, steps, status: steps.some((s) => s.status === "blocked") ? "blocked" : plan.status };
 }
 
