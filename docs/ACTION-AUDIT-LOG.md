@@ -16,4 +16,4 @@ The included in-memory store is intended for tests and single-process developmen
 
 Production deployments should provide a shared durable append-only store (for example, a transactional database) and enforce a unique constraint on `receiptHash`. This prevents the same authorization receipt from being replayed as a second action.
 
-GitHub branch heads and pull-request creation are independently re-checked by the action gateway. GitHub's REST API exposes branch refs as commit SHAs and requires write permissions to create references or pull requests. citeturn0search3turn0search1
+GitHub branch heads and pull-request creation are independently re-checked by the action gateway. This keeps the application-level audit record separate from GitHub's own authorization and branch state.
