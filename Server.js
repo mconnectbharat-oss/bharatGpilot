@@ -84,6 +84,14 @@ app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => 
   }
 });
 
+app.get("/api/pilot/repository-analysis/:owner/:repo", requireAuth, async (req, res) => {
+  try {
+    res.json(await inspectRepository(req.params.owner + "/" + req.params.repo));
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
 app.get("/api/pilot/providers", (_req, res) => {
   res.json({
     providers: getAvailableProviders()
