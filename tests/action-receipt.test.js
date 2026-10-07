@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createActionReceipt, verifyActionReceipt } from "../src/core/action-receipt.js";
 
 const context = {
+  actionId: "action-1", action: "CREATE_PR", actorId: "user-1", issuedAt: "2026-10-07T00:00:00.000Z",
   review: { decision: "VERIFIED", reasons: [] },
   repository: { owner: "owner", repo: "repo", ref: "main" },
   baseSha: "base-123",
