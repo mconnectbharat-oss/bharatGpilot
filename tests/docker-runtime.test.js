@@ -17,7 +17,8 @@ test("docker arguments enforce sandbox hardening", () => {
 
 test("runtime command is passed as a single argv item", () => {
   const args = buildDockerRunArgs({ image: "node:20-bookworm-slim@sha256:" + "a".repeat(64), workspacePath: "/tmp/workspace", command: "node --test", contract: createDockerRuntimeContract() });
-  assert.equal(args.at(-2), "sh");
+  assert.equal(args.at(-3), "sh");
+  assert.equal(args.at(-2), "-lc");
   assert.equal(args.at(-1), "node --test");
 });
 
