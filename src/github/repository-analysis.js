@@ -1,6 +1,8 @@
 import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
+import { extractProjectUnderstanding } from "./semantic-analysis.js";
 
 export function analyzeRepositorySignals(inspection) {
+  const understanding = extractProjectUnderstanding(inspection);
   const structure = inspection.projectStructure || {};
   const signals = structure.signals || {};
   const evidence = [];
@@ -76,6 +78,7 @@ export function analyzeRepositorySignals(inspection) {
   }
 
   return {
+    understanding,
     summary: {
       repository: inspection.repository,
       coverage: inspection.treeTruncated ? "partial" : "indexed",
