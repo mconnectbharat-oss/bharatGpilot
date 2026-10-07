@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createActionReceipt } from "../src/core/action-receipt.js";
-import { createAuditRecord, createInMemoryAuditStore, appendAuditRecord } from "../src/core/audit-log.js";
+import { createAuditRecord, createInMemoryAuditStore, appendAuditRecord, claimAuditReceipt, releaseAuditReceipt } from "../src/core/audit-log.js";
 
 const receipt = createActionReceipt({
   review: { decision: "VERIFIED" },
@@ -40,4 +40,16 @@ test("audit store rejects receipt replay", async () => {
   await appendAuditRecord(store, record);
   await assert.rejects(() => appendAuditRecord(store, record), /already been audited/);
   assert.equal(await store.hasReceipt(receipt.receiptHash), true);
+});
+
+
+test("audit store atomically claims a receipt before an action", async () => {
+  const store = createInMemoryAuditStore();
+  await claimAuditReceipt(store, receipt.receiptHash, "action-claim");
+  await assert.rejects(
+    () => claimAuditReceipt(store, receipt.receiptHash, "action-other"),
+    /already been claimed/
+  );
+  await releaseAuditReceipt(store, receipt.receiptHash, "action-claim");
+  await claimAuditReceipt(store, receipt.receiptHash, "action-other");
 });
