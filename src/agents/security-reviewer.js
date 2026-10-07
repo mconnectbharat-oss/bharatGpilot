@@ -30,7 +30,10 @@ export function reviewSecurity(plan, inspection) {
   assertActionAllowed(ACTIONS.ANALYZE_CODE);
 
   const findings = [];
-  const contents = Array.isArray(inspection.analyzedContents)\n    ? inspection.analyzedContents\n    : Object.entries(inspection.analyzedContents || {}).map(([path, content]) => ({ path, content }));\n  for (const item of contents) findings.push(...scanText(item.path, item.content));
+  const contents = Array.isArray(inspection.analyzedContents)
+    ? inspection.analyzedContents
+    : Object.entries(inspection.analyzedContents || {}).map(([path, content]) => ({ path, content }));
+  for (const item of contents) findings.push(...scanText(item.path, item.content));
 
   let next = markStep(plan, "security", "running");
   for (const finding of findings) next = addEvidence(next, finding);
