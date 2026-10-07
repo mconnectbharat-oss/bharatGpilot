@@ -1,4 +1,4 @@
-import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
+import { createEvidence, EVIDENCE_CLASSES, createClaim } from "../evidence/index.js";
 import { extractProjectUnderstanding } from "./semantic-analysis.js";
 import { evaluateRepositoryHealth, rankContributionOpportunities } from "./health-contributions.js";
 
@@ -10,7 +10,7 @@ export function analyzeRepositorySignals(inspection) {
   const signals = structure.signals || {};
   const evidence = [];
   const findings = [];
-  const recommendations = [];
+  const recommendations = [];\n  const claims = [];
 
   function direct(claim, location, detail = null) {
     evidence.push(createEvidence({
