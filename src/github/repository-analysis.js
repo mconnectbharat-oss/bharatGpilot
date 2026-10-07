@@ -10,7 +10,8 @@ export function analyzeRepositorySignals(inspection) {
   const signals = structure.signals || {};
   const evidence = [];
   const findings = [];
-  const recommendations = [];\n  const claims = [];
+  const recommendations = [];
+  const claims = [];
 
   function direct(claim, location, detail = null) {
     const item = createEvidence({ claim, classification: EVIDENCE_CLASSES.DIRECT, sources: [{ type: "github_analysis", location, detail }] });
