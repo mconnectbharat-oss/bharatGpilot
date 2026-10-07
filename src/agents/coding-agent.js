@@ -31,7 +31,7 @@ export async function executeCodingPlan({ owner, repo, baseRef, branchName, chan
 
   const commits = [];
   for (const change of safeChanges) {
-    commits.push(await applyFileChange({ owner, repo, branchName: branch.branchName, path: change.path, content: change.content, message: change.message, review, approved: Boolean(change.approved), expectedSha: change.expectedSha }));
+    commits.push(await applyFileChange({ owner, repo, branchName: branch.branchName, path: change.path, content: change.content, message: change.message, review, approved: Boolean(change.approved), expectedSha: change.expectedSha, changeManifest }));
   }
 
   let pullRequest = null;
