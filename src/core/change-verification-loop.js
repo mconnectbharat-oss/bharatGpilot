@@ -85,6 +85,9 @@ export async function executeVerifiedChange({
   });
 
   const actionReceipt = createActionReceipt({
+    actionId: randomUUID(),
+    action: ACTIONS.CREATE_PR,
+    actorId,
     review: initialReview,
     repository: plan.repository,
     baseSha: coding.branch.baseSha,
@@ -122,7 +125,9 @@ export async function executeVerifiedChange({
       approved,
       changeManifest: coding.changeManifest,
       expectedBranchSha: coding.expectedBranchSha,
-      actionReceipt
+      actionReceipt,
+      expectedAction: ACTIONS.CREATE_PR,
+      expectedActorId: actorId
     });
   }
 

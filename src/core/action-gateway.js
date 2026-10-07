@@ -86,7 +86,7 @@ export function validateChangeManifest(changes) {
   return createManifest(changes);
 }
 
-export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest, expectedBranchSha, actionReceipt } = {}) {
+export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest, expectedBranchSha, actionReceipt, expectedAction = ACTIONS.CREATE_PR, expectedActorId } = {}) {
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_PR, { approved });
   if (!owner || !repo || !branchName || !title) throw new Error("owner, repo, branchName, and title are required.");
@@ -94,6 +94,7 @@ export async function createActionPullRequest({ owner, repo, branchName, baseRef
   const receiptCheck = verifyActionReceipt(actionReceipt);
   if (receiptCheck.status !== "VERIFIED") throw new Error("Immutable action receipt is invalid.");
   if (actionReceipt.finalReview?.decision !== "VERIFIED" || actionReceipt.changeVerification?.status !== "VERIFIED") throw new Error("Action receipt does not contain verified authorization results.");
+  if (actionReceipt.action !== expectedAction || (expectedActorId && actionReceipt.actorId !== expectedActorId)) throw new Error("Action receipt identity does not match the requested action.");
   if (JSON.stringify(actionReceipt.manifest) !== JSON.stringify(changeManifest)) throw new Error("Action receipt manifest does not match the requested manifest.");
   if (actionReceipt.repository.owner !== owner || actionReceipt.repository.repo !== repo || actionReceipt.repository.ref !== (baseRef || "main") || actionReceipt.branchName !== branchName || actionReceipt.branchHeadSha !== expectedBranchSha) throw new Error("Action receipt does not match the requested repository state.");
   const branchRef = await getRepositoryRef(owner, repo, branchName);
