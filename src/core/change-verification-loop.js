@@ -9,7 +9,7 @@ import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
 import { createActionReceipt } from "./action-receipt.js";
-import { createAuditRecord, appendAuditRecord } from "./audit-log.js";
+import { createAuditRecord, appendAuditRecord, claimAuditReceipt, releaseAuditReceipt } from "./audit-log.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
@@ -107,9 +107,14 @@ export async function executeVerifiedChange({
   });
 
   const auditStore = dependencies.auditStore;
-  if (auditStore) await appendAuditRecord(auditStore, auditRecord);
+  const claimRequired = Boolean(auditStore && typeof auditStore.claim === "function" && typeof auditStore.release === "function");
+  if (createPr && reviewed.review.decision === "VERIFIED" && !claimRequired) {
+    return Object.freeze({ status: "blocked", stage: "audit_claim", reason: "TRANSACTIONAL_AUDIT_STORE_REQUIRED", actionReceipt, auditRecord, review: reviewed.review });
+  }
+  if (claimRequired) await claimAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
 
   let pullRequest = null;
+  try {
   if (createPr && reviewed.review.decision === "VERIFIED") {
     pullRequest = await createActionPullRequest({
       owner: plan.repository.owner,
@@ -126,6 +131,9 @@ export async function executeVerifiedChange({
     });
   }
 
+  if (auditStore && typeof auditStore.append === "function") await appendAuditRecord(auditStore, { ...auditRecord, pullRequest });
+  if (claimRequired && !createPr) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
+
   return Object.freeze({
     status: reviewed.review.decision === "VERIFIED" ? "verified" : "review_required",
     coding,
@@ -138,4 +146,8 @@ export async function executeVerifiedChange({
     actionGate: actionDisposition(reviewed.review, ACTIONS.CREATE_PR),
     pullRequest
   });
+  } catch (error) {
+    if (claimRequired) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
+    throw error;
+  }
 }
