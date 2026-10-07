@@ -2,10 +2,22 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { RUNTIME_STATUS, assertRuntimeContract, createRuntimeContract } from "./runtime.js";
 
-const DEFAULT_IMAGE = process.env.BHARATGPILOT_DOCKER_IMAGE || "";\nconst ALLOWED_COMMANDS = Object.freeze({ "npm test": ["npm", ["test"]], "node --test": ["node", ["--test"]] });
+const DEFAULT_IMAGE = process.env.BHARATGPILOT_DOCKER_IMAGE || "";
+const ALLOWED_COMMANDS = Object.freeze({ "npm test": ["npm", ["test"]], "node --test": ["node", ["--test"]] });
 const MAX_OUTPUT_BYTES = 200_000;
 
-function assertPinnedImage(image) {\n  if (!image || !/@sha256:[a-f0-9]{64}$/i.test(image)) throw new Error("Docker runtime requires an immutable image digest.");\n  return image;\n}\n\nfunction normalizeCommand(command) {\n  const key = String(command || "").trim();\n  if (!Object.hasOwn(ALLOWED_COMMANDS, key)) throw new Error("Command is not allowed by the Docker sandbox policy.");\n  return key;\n}\n\nfunction bounded(value, min, max, fallback) {
+function assertPinnedImage(image) {
+  if (!image || !/@sha256:[a-f0-9]{64}$/i.test(image)) throw new Error("Docker runtime requires an immutable image digest.");
+  return image;
+}
+
+function normalizeCommand(command) {
+  const key = String(command || "").trim();
+  if (!Object.hasOwn(ALLOWED_COMMANDS, key)) throw new Error("Command is not allowed by the Docker sandbox policy.");
+  return key;
+}
+
+function bounded(value, min, max, fallback) {
   return Math.min(Math.max(value ?? fallback, min), max);
 }
 
