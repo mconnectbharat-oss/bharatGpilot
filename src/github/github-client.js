@@ -29,6 +29,10 @@ export async function getRepositoryContents(owner, repo, path = "") {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"));
 }
 
+export async function getRepositoryBlob(owner, repo, fileSha) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/blobs/" + encodeURIComponent(fileSha));
+}
+
 export async function getRepositoryTree(owner, repo, treeSha) {
   const encodedTree = encodeURIComponent(treeSha);
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/trees/" + encodedTree + "?recursive=1");
