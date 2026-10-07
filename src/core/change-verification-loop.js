@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { executeCodingPlan } from "./coding-agent.js";
 import { executeRepositoryTests } from "../sandbox/execution.js";
 import { createTestPlan, recordTestResult } from "./tester.js";
@@ -8,10 +9,11 @@ import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
 import { createActionReceipt } from "./action-receipt.js";
+import { createAuditRecord, appendAuditRecord } from "./audit-log.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
-  createPr = false, prTitle, prBody, approved = false
+  createPr = false, prTitle, prBody, approved = false, actorId = "system"
 } = {}) {
   if (!plan?.repository || !inspection) throw new Error("A repository plan and inspection are required.");
   if (!plan.evidence?.length) throw new Error("Evidence is required before a coding action.");
@@ -78,7 +80,6 @@ export async function executeVerifiedChange({
     plan: secured.plan,
     analysis,
     changeVerification,
-    actionReceipt,
     testResult: recorded.testResult,
     security: secured.security
   });
@@ -95,6 +96,18 @@ export async function executeVerifiedChange({
     finalReview: reviewed.review,
     branchHeadSha: coding.expectedBranchSha
   });
+
+  const auditRecord = createAuditRecord({
+    actionId: randomUUID(),
+    action: ACTIONS.CREATE_PR,
+    actorId,
+    receipt: actionReceipt,
+    outcome: reviewed.review.decision,
+    pullRequest: null
+  });
+
+  const auditStore = dependencies.auditStore;
+  if (auditStore) await appendAuditRecord(auditStore, auditRecord);
 
   let pullRequest = null;
   if (createPr && reviewed.review.decision === "VERIFIED") {
@@ -116,6 +129,8 @@ export async function executeVerifiedChange({
   return Object.freeze({
     status: reviewed.review.decision === "VERIFIED" ? "verified" : "review_required",
     coding,
+    actionReceipt,
+    auditRecord,
     testResult: recorded.testResult,
     postChangeInspection,
     security: secured.security,
