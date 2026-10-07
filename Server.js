@@ -16,6 +16,8 @@ import {
 } from "./src/security/auth.js";
 import { getActionPolicySnapshot } from "./src/core/permissions.js";
 import { createInvestigationPlan } from "./src/core/orchestrator.js";
+import { createResearchPlan } from "./src/core/planner.js";
+import { researchRepository } from "./src/core/researcher.js";
 import { inspectRepository } from "./src/github/repository-intelligence.js";
 import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
 
@@ -71,6 +73,19 @@ app.get("/api/pilot/policy", (_req, res) => {
 app.post("/api/pilot/plan", requireAuth, (req, res) => {
   try {
     res.json(createInvestigationPlan(req.body?.request));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/pilot/investigate", requireAuth, async (req, res) => {
+  try {
+    const plan = createResearchPlan({
+      request: req.body?.request,
+      repository: req.body?.repository
+    });
+    const result = await researchRepository(plan);
+    res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
