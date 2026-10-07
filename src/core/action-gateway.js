@@ -130,3 +130,21 @@ export async function createActionPullRequest({ owner, repo, branchName, baseRef
   });
   return Object.freeze({ number: result.number, url: result.html_url, state: result.state, draft: result.draft, changeManifest, actionReceipt });
 }
+
+export async function mergeVerifiedPullRequest({ owner, repo, pullNumber, approved = false } = {}) {
+  assertActionAllowed(ACTIONS.MERGE_PR, { approved });
+  if (!owner || !repo || !pullNumber) throw new Error("owner, repo, and pullNumber are required.");
+  const pull = await githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls/" + encodeURIComponent(pullNumber));
+  if (pull?.state !== "open") throw new Error("Pull request is not open.");
+  if (pull?.draft) throw new Error("Draft pull requests cannot be autonomously merged.");
+  if (!pull?.head?.sha || !pull?.base?.sha) throw new Error("Pull request head and base SHAs are required.");
+  const ciVerification = await verifyRequiredCiChecks(owner, repo, pull.head.sha);
+  if (ciVerification.status !== "VERIFIED") throw new Error("Required CI checks have not all passed for the exact pull request head commit.");
+  const result = await githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls/" + encodeURIComponent(pullNumber) + "/merge", {
+    method: "PUT",
+    body: JSON.stringify({ merge_method: "squash", sha: pull.head.sha }),
+    headers: { "Content-Type": "application/json" }
+  });
+  if (result?.merged !== true) throw new Error(result?.message || "GitHub did not merge the pull request.");
+  return Object.freeze({ number: pullNumber, merged: true, sha: result.sha || null, ciVerification });
+}
