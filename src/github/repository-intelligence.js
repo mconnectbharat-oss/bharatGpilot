@@ -1,5 +1,7 @@
 import { getRepository, getRepositoryContents, getRepositoryReadme, getRepositoryIssues, getRepositoryPulls, getRepositoryReleases, getRepositoryTree } from "./github-client.js";
 import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
+import { getRepositoryBlob } from "./github-client.js";
+import { selectContentCandidates, decodeBlob, analyzeProjectStructure } from "./content-analysis.js";
 
 export function parseRepositoryRef(value) {
   const match = String(value || "").trim().match(/^([^/]+)\/([^/]+)$/);
@@ -71,6 +73,12 @@ export async function inspectRepository(repository) {
   evidence.push(...issueEvidence(owner, repo, issues, pulls, releases));
 
   const treeEntries = Array.isArray(tree?.tree) ? tree.tree : [];
+  const contentCandidates = selectContentCandidates(treeEntries);
+  const contents = {};
+  for (const file of contentCandidates) {
+    try { contents[file.path] = decodeBlob(await getRepositoryBlob(owner, repo, file.sha)); } catch { /* unavailable content remains unverified */ }
+  }
+  const projectStructure = analyzeProjectStructure(treeEntries, contents);
   if (tree?.truncated === true) {
     evidence.push(createEvidence({
       claim: "GitHub returned a truncated recursive repository tree; complete repository indexing could not be verified.",
@@ -105,6 +113,8 @@ export async function inspectRepository(repository) {
     indexedFiles: treeEntries.filter((entry) => entry.type === "blob").map((entry) => ({ path: entry.path, size: entry.size, sha: entry.sha })),
     indexedDirectories: treeEntries.filter((entry) => entry.type === "tree").map((entry) => entry.path),
     treeTruncated: tree?.truncated === true,
+    projectStructure,
+    analyzedContents: contents,
     readmeAvailable: Boolean(readme),
     issues: issues.filter((item) => !item.pull_request).map(({ number, title, state, created_at, updated_at }) => ({ number, title, state, created_at, updated_at })),
     pullRequests: pulls.map(({ number, title, state, draft, created_at, updated_at }) => ({ number, title, state, draft, created_at, updated_at })),
