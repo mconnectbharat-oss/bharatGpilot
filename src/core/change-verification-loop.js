@@ -4,6 +4,7 @@ import { createTestPlan, recordTestResult } from "./tester.js";
 import { reviewSecurity } from "./security-reviewer.js";
 import { finalReview, actionDisposition } from "./final-reviewer.js";
 import { ACTIONS } from "../core/permissions.js";
+import { inspectRepository } from "../github/repository-intelligence.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
@@ -54,7 +55,11 @@ export async function executeVerifiedChange({
     output: tested.execution?.output || null
   });
 
-  const secured = reviewSecurity(recorded.plan, inspection);
+  const postChangeInspection = await (dependencies.inspectRepository || inspectRepository)(
+    `${plan.repository.owner}/${plan.repository.repo}`,
+    coding.branch.branchName
+  );
+  const secured = reviewSecurity(recorded.plan, postChangeInspection);
   const reviewed = finalReview({
     plan: secured.plan,
     analysis,
@@ -83,6 +88,7 @@ export async function executeVerifiedChange({
     status: reviewed.review.decision === "VERIFIED" ? "verified" : "review_required",
     coding,
     testResult: recorded.testResult,
+    postChangeInspection,
     security: secured.security,
     review: reviewed.review,
     actionGate: actionDisposition(reviewed.review, ACTIONS.CREATE_PR),
