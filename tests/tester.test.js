@@ -12,7 +12,7 @@ test("creates a bounded test plan without claiming execution", () => {
   const result = createTestPlan({ ...plan, evidence: [] }, inspection);
   assert.equal(result.testPlan.command, "npm test");
   assert.equal(result.testPlan.execution, "NOT_EXECUTED");
-  assert.equal(result.plan.steps.at(-1).name, "tester");
+  assert.equal(result.plan.steps.at(-1).id, "tests");
 });
 
 test("records explicit sandbox results as evidence", () => {

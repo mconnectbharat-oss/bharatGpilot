@@ -37,7 +37,7 @@ test("audit store rejects receipt replay", async () => {
     receipt,
     outcome: "VERIFIED"
   });
-  await appendAuditRecord(store, record);
+  await claimAuditReceipt(store, receipt.receiptHash, record.actionId, receipt);\n  await appendAuditRecord(store, record);
   await assert.rejects(() => appendAuditRecord(store, record), /already been audited/);
   assert.equal(await store.hasReceipt(receipt.receiptHash), true);
 });
@@ -45,7 +45,7 @@ test("audit store rejects receipt replay", async () => {
 
 test("audit store atomically claims a receipt before an action", async () => {
   const store = createInMemoryAuditStore();
-  await claimAuditReceipt(store, receipt.receiptHash, "action-claim");
+  await claimAuditReceipt(store, receipt.receiptHash, "action-claim", receipt);
   await assert.rejects(
     () => claimAuditReceipt(store, receipt.receiptHash, "action-other"),
     /already been claimed/

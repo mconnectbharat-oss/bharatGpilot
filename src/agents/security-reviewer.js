@@ -16,7 +16,7 @@ function scanText(path, content) {
       rule.pattern.lastIndex = 0;
       findings.push({
         id: rule.id, path, classification: "DIRECT",
-        claim: rule.claim, source: "repository file: " + path
+        claim: rule.claim, sources: [{ type: "repository", location: "repository file: " + path }]
       });
     }
     rule.pattern.lastIndex = 0;
@@ -39,7 +39,7 @@ export function reviewSecurity(plan, inspection) {
     next = addEvidence(next, {
       classification: "NO EVIDENCE FOUND",
       claim: "No high-risk pattern was detected in the bounded content sample; this is not proof of security.",
-      source: "bounded static security scan"
+      sources: [{ type: "repository", location: "bounded static security scan" }]
     });
   }
 

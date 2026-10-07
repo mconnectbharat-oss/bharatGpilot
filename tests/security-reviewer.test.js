@@ -12,7 +12,7 @@ test("flags privileged workflow and process execution signals", () => {
   );
   assert.equal(result.security.status, "review_required");
   assert.equal(result.security.findings.length, 2);
-  assert.equal(result.plan.steps.at(-1).name, "security_reviewer");
+  assert.equal(result.plan.steps.at(-1).id, "security");
 });
 
 test("does not treat a clean bounded scan as proof of security", () => {
