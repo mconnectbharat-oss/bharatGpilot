@@ -29,11 +29,12 @@ function issueEvidence(owner, repo, issues, pulls, releases) {
   ];
 }
 
-export async function inspectRepository(repository) {
+export async function inspectRepository(repository, ref) {
   const { owner, repo } = parseRepositoryRef(repository);
   const metadata = await getRepository(owner, repo);
   const root = await getRepositoryContents(owner, repo);
-  const tree = await getRepositoryTree(owner, repo, metadata.default_branch);
+  const resolvedRef = ref || metadata.default_branch;
+  const tree = await getRepositoryTree(owner, repo, resolvedRef);
   const [readme, issues, pulls, releases] = await Promise.all([
     getRepositoryReadme(owner, repo).catch(() => null),
     getRepositoryIssues(owner, repo),
@@ -103,6 +104,7 @@ export async function inspectRepository(repository) {
 
   return {
     repository: metadata.full_name,
+    ref: resolvedRef,
     visibility: metadata.visibility,
     defaultBranch: metadata.default_branch,
     language: metadata.language,
