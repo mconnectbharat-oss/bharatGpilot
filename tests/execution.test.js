@@ -1,29 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { executeRepositoryTests, createExecutionContract } from "../src/sandbox/execution.js";
+import { executeRepositoryTests } from "../src/sandbox/execution.js";
 
-test("execution contract requires cleanup and isolated deployment", () => {
-  const contract = createExecutionContract();
-  assert.equal(contract.workspace, "ephemeral");
-  assert.equal(contract.credentials, "none");
-  assert.equal(contract.cleanup, "guaranteed");
-  assert.equal(contract.execution, "deployment-isolated-runtime-required");
+test("execution fails closed without an isolated runtime", async () => {
+  const result = await executeRepositoryTests({ owner: "o", repo: "r" });
+  assert.equal(result.status, "not_executed");
+  assert.equal(result.reason, "ISOLATED_RUNTIME_UNAVAILABLE");
 });
 
-test("execution adapter always cleans up the workspace", async () => {
+test("execution adapter can use an injected isolated runtime", async () => {
   let cleaned = false;
   const result = await executeRepositoryTests({
-    owner: "owner",
-    repo: "repo",
+    owner: "o",
+    repo: "r",
     adapters: {
-      provisionWorkspace: async () => ({
-        path: "/tmp/bharatgpilot-test",
-        cleanup: async () => { cleaned = true; }
-      }),
-      materializeRepository: async () => ({ materializedFiles: 1 }),
-      runSandboxedTest: async () => ({ status: "passed", output: "ok" })
+      runtimeAdapter: {
+        contract: { isolation: "container", network: "disabled", credentials: "none" },
+        run: async ({ command, workspacePath }) => ({ status: "passed", execution: "EXECUTED", command, workspacePath })
+      },
+      provisionWorkspace: async () => ({ path: "/tmp/workspace", cleanup: async () => { cleaned = true; } }),
+      materializeRepository: async () => ({ materializedFiles: 1 })
     }
   });
   assert.equal(result.status, "passed");
+  assert.equal(result.execution.execution, "EXECUTED");
   assert.equal(cleaned, true);
 });
