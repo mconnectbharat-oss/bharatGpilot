@@ -24,7 +24,7 @@ export function createTestPlan(plan, inspection) {
   const testDirectoryObserved = Boolean(inspection.projectStructure?.signals?.hasTestsDirectory);
   let next = markStep(plan, "tests", "running");
   next = addEvidence(next, {
-    class: testDirectoryObserved ? "DIRECT" : "NO EVIDENCE FOUND",
+    classification: testDirectoryObserved ? "DIRECT" : "NO EVIDENCE FOUND",
     claim: testDirectoryObserved
       ? "A repository test directory was directly observed."
       : "A repository test directory could not be directly verified.",
@@ -53,7 +53,7 @@ export function recordTestResult(plan, testPlan, result) {
 
   let next = markStep(plan, "tests", result.status === "passed" ? "completed" : "running");
   next = addEvidence(next, {
-    class: result.status === "not_executed" ? "NO EVIDENCE FOUND" : "DIRECT",
+    classification: result.status === "not_executed" ? "NO EVIDENCE FOUND" : "DIRECT",
     claim: result.claim || "Sandbox test execution completed with an explicit result.",
     source: result.source || "sandbox test runner"
   });
