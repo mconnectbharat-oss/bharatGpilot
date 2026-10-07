@@ -20,3 +20,14 @@ test("runtime command is passed as a single argv item", () => {
   assert.equal(args.at(-2), "sh");
   assert.equal(args.at(-1), "node --test");
 });
+
+test("Docker runtime rejects unpinned images", () => {
+  const contract = createDockerRuntimeContract();
+  assert.throws(() => buildDockerRunArgs({ image: "node:20-bookworm-slim", workspacePath: "/tmp/workspace", contract }), /immutable image digest/);
+});
+
+test("Docker runtime rejects non-allowlisted commands", () => {
+  const contract = createDockerRuntimeContract();
+  const image = "node:20-bookworm-slim@sha256:" + "a".repeat(64);
+  assert.throws(() => buildDockerRunArgs({ image, workspacePath: "/tmp/workspace", command: "node -e process.exit(1)", contract }), /not allowed/);
+});
