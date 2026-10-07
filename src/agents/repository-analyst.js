@@ -5,6 +5,8 @@ import { createTestPlan, recordTestResult } from "./tester.js";
 import { reviewSecurity } from "./security-reviewer.js";
 import { finalReview, actionDisposition } from "./final-reviewer.js";
 import { executeRepositoryTests } from "../sandbox/execution.js";
+import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
+import { buildMajorClaimChains } from "../core/major-claim-gate.js";
 
 export async function analyzeRepository(plan, inspection, dependencies = {}) {
   if (!plan?.repository) throw new Error("A repository is required for repository analysis.");
@@ -13,6 +15,9 @@ export async function analyzeRepository(plan, inspection, dependencies = {}) {
   assertActionAllowed(ACTIONS.ANALYZE_ISSUES);
 
   const analysis = analyzeRepositorySignals(inspection);
+  const purposeClaims = (analysis.understanding?.purposeSignals || []).map((signal, index) => claimFromEvidence({ id: "purpose-" + (index + 1), statement: signal.value, evidence: [{ id: "purpose-" + (index + 1) + ":e1", classification: "DIRECT", source: signal.source }] }));
+  const healthClaims = (analysis.health?.areas || []).map((area, index) => claimFromEvidence({ id: "health-" + (index + 1), statement: area.reason, evidence: (analysis.health.evidence || []).filter((item) => item.claim === area.reason) }));
+  const contributionClaims = (analysis.contribution?.opportunities || []).map((item, index) => claimFromEvidence({ id: "contribution-" + (index + 1), statement: item.rationale, evidence: [{ id: "contribution-" + (index + 1) + ":e1", classification: item.area === "existing-issue" ? "DIRECT" : "NO EVIDENCE FOUND", source: item.area === "existing-issue" ? "repository/issues/" + item.issueNumber : "repository/project-structure" }] }));
   let next = markStep(plan, "repository", "running");
   for (const evidence of [
     ...(analysis.evidence || []),

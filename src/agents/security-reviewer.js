@@ -1,5 +1,6 @@
 import { ACTIONS, assertActionAllowed } from "../core/permissions.js";
 import { addEvidence, markStep } from "../core/orchestrator.js";
+import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
 
 const HIGH_RISK_PATTERNS = Object.freeze([
   { id: "privileged-workflow", pattern: /pull_request_target|workflow_run/gi, claim: "A privileged GitHub Actions trigger was observed and requires review when handling untrusted code." },
