@@ -1,5 +1,6 @@
 import { ACTIONS, assertActionAllowed } from "../core/permissions.js";
 import { markStep, summarizeEvidence } from "../core/orchestrator.js";
+import { claimFromEvidence, claimEvidenceSummary } from "../evidence/claim-chain.js";
 
 export const REVIEW_DECISIONS = Object.freeze({ VERIFIED: "VERIFIED", HUMAN_REVIEW_REQUIRED: "HUMAN_REVIEW_REQUIRED", BLOCKED: "BLOCKED" });
 
@@ -14,8 +15,8 @@ export function finalReview({ plan, analysis, testResult, security } = {}) {
   if (status === "failed") { decision = REVIEW_DECISIONS.BLOCKED; reasons.push("Sandboxed tests failed."); }
   if (status === "not_executed") { decision = decision === REVIEW_DECISIONS.VERIFIED ? REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED : decision; reasons.push("Tests were not executed."); }
   if (evidence.noEvidenceFound > 0 && decision === REVIEW_DECISIONS.VERIFIED) { decision = REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED; reasons.push("Some requested claims remain unverified."); }
-  const next = markStep(plan, "verification", decision === REVIEW_DECISIONS.VERIFIED ? "completed" : "blocked");
-  return { plan: next, review: { decision, reasons, evidence, testStatus: status, securityFindingCount: findings.length, analysisSummary: analysis?.summary || null } };
+  const decisionClaim = claimFromEvidence({ id: "action-decision", statement: "Autonomous action decision: " + decision, evidence: (plan.evidence || []).map((item, index) => ({ id: "action-decision:e" + (index + 1), classification: item.classification, source: item.sources?.[0] || item.source || null })), reasoning: reasons.join(" ") || "All reviewed evidence and verification gates passed." });\n  if (decision === REVIEW_DECISIONS.VERIFIED && decisionClaim.status !== "SUPPORTED") { decision = REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED; reasons.push("A VERIFIED action decision requires DIRECT evidence."); }\n  const next = markStep(plan, "verification", decision === REVIEW_DECISIONS.VERIFIED ? "completed" : "blocked");
+  return { plan: next, review: { decision, reasons, evidence, claims: [decisionClaim], claimEvidence: claimEvidenceSummary([decisionClaim]), testStatus: status, securityFindingCount: findings.length, analysisSummary: analysis?.summary || null } };
 }
 
 export function assertAutonomousActionAllowed(review, action) {
