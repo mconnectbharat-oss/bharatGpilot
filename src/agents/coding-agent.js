@@ -30,17 +30,24 @@ export async function executeCodingPlan({ owner, repo, baseRef, branchName, chan
   const branch = await createActionBranch({ owner, repo, baseRef, branchName, review });
 
   const commits = [];
+  let expectedBranchSha = branch.baseSha;
   for (const change of safeChanges) {
-    commits.push(await applyFileChange({ owner, repo, branchName: branch.branchName, path: change.path, content: change.content, message: change.message, review, approved: Boolean(change.approved), expectedSha: change.expectedSha }));
+    const commit = await applyFileChange({
+      owner, repo, branchName: branch.branchName, path: change.path, content: change.content,
+      message: change.message, review, approved: Boolean(change.approved),
+      expectedSha: change.expectedSha, expectedBranchSha, changeManifest
+    });
+    commits.push(commit);
+    expectedBranchSha = commit.commitSha;
   }
 
   let pullRequest = null;
   if (createPr) {
     pullRequest = await createActionPullRequest({
       owner, repo, branchName: branch.branchName, baseRef: branch.baseRef,
-      title: prTitle, body: prBody, review, approved, changeManifest
+      title: prTitle, body: prBody, review, approved, changeManifest, expectedBranchSha
     });
   }
 
-  return Object.freeze({ branch, changeManifest, commits, pullRequest });
+  return Object.freeze({ branch, changeManifest, commits, expectedBranchSha, pullRequest });
 }

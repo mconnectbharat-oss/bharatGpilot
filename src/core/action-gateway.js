@@ -1,4 +1,4 @@
-import { githubRequest, getRepository, getRepositoryContents } from "../github/github-client.js";
+import { githubRequest, getRepository, getRepositoryContents, getRepositoryRef } from "../github/github-client.js";
 import { ACTIONS, assertActionAllowed } from "./permissions.js";
 
 const MAX_FILES = 10;
@@ -58,14 +58,17 @@ export async function createActionBranch({ owner, repo, baseRef, branchName, rev
   return Object.freeze({ owner, repo, branchName, baseRef: sourceRef, baseSha: ref.object.sha });
 }
 
-export async function applyFileChange({ owner, repo, branchName, path, content, message, review, approved = false, expectedSha } = {}) {
+export async function applyFileChange({ owner, repo, branchName, path, content, message, review, approved = false, expectedSha, expectedBranchSha, changeManifest } = {}) {
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_BRANCH);
   assertChangePolicy(path, approved);
+  if (!expectedBranchSha) throw new Error("Expected branch SHA is required for optimistic concurrency.");
+  const branchRef = await getRepositoryRef(owner, repo, branchName);
+  if (branchRef?.object?.sha !== expectedBranchSha) throw new Error("Target branch changed since the action was planned.");
   if (typeof content !== "string" || !message) throw new Error("content and message are required.");
 
   let existing = null;
-  try { existing = await getRepositoryContents(owner, repo, path); }
+  try { existing = await getRepositoryContents(owner, repo, path, branchName); }
   catch (error) { if (!String(error.message).includes("Not Found")) throw error; }
   if (expectedSha && existing?.sha !== expectedSha) throw new Error("Repository file changed since the action was planned.");
 
@@ -82,10 +85,13 @@ export function validateChangeManifest(changes) {
   return createManifest(changes);
 }
 
-export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest } = {}) {
+export async function createActionPullRequest({ owner, repo, branchName, baseRef, title, body, review, approved = false, changeManifest, expectedBranchSha } = {}) {
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_PR, { approved });
   if (!owner || !repo || !branchName || !title) throw new Error("owner, repo, branchName, and title are required.");
+  if (!expectedBranchSha) throw new Error("Expected branch SHA is required before PR creation.");
+  const branchRef = await getRepositoryRef(owner, repo, branchName);
+  if (branchRef?.object?.sha !== expectedBranchSha) throw new Error("Target branch changed after verification.");
   if (!changeManifest?.version || !Array.isArray(changeManifest.files) || changeManifest.files.length === 0) throw new Error("A change manifest is required before PR creation.");
   const result = await githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls", {
     method: "POST",

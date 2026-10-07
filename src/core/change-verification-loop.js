@@ -92,7 +92,8 @@ export async function executeVerifiedChange({
       body: prBody,
       review: reviewed.review,
       approved,
-      changeManifest: coding.changeManifest
+      changeManifest: coding.changeManifest,
+      expectedBranchSha: coding.expectedBranchSha
     });
   }
 
