@@ -1,8 +1,11 @@
 import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
 import { extractProjectUnderstanding } from "./semantic-analysis.js";
+import { evaluateRepositoryHealth, rankContributionOpportunities } from "./health-contributions.js";
 
 export function analyzeRepositorySignals(inspection) {
   const understanding = extractProjectUnderstanding(inspection);
+  const health = evaluateRepositoryHealth(inspection);
+  const contribution = rankContributionOpportunities(inspection, health);
   const structure = inspection.projectStructure || {};
   const signals = structure.signals || {};
   const evidence = [];
@@ -79,6 +82,8 @@ export function analyzeRepositorySignals(inspection) {
 
   return {
     understanding,
+    health,
+    contribution,
     summary: {
       repository: inspection.repository,
       coverage: inspection.treeTruncated ? "partial" : "indexed",
