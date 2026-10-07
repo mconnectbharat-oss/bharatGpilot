@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { githubRequest, getRepository, getRepositoryContents } from "../github/github-client.js";
 import { ACTIONS, assertActionAllowed } from "./permissions.js";
 
@@ -30,7 +31,7 @@ function createManifest(changes) {
     if (Buffer.byteLength(change.content, "utf8") > MAX_FILE_BYTES) throw new Error("Change manifest file size exceeded.");
     return Object.freeze({
       path: change.path,
-      contentFingerprint: Buffer.from(change.content, "utf8").toString("base64"),
+      contentSha256: createHash("sha256").update(change.content, "utf8").digest("hex"),
       bytes: Buffer.byteLength(change.content, "utf8"),
       message: change.message
     });
@@ -58,14 +59,20 @@ export async function createActionBranch({ owner, repo, baseRef, branchName, rev
   return Object.freeze({ owner, repo, branchName, baseRef: sourceRef, baseSha: ref.object.sha });
 }
 
-export async function applyFileChange({ owner, repo, branchName, path, content, message, review, approved = false, expectedSha } = {}) {
+export async function applyFileChange({ owner, repo, branchName, path, content, message, review, approved = false, expectedSha, changeManifest } = {}) {
   assertVerified(review);
   assertActionAllowed(ACTIONS.CREATE_BRANCH);
   assertChangePolicy(path, approved);
   if (typeof content !== "string" || !message) throw new Error("content and message are required.");
+  const manifestEntry = changeManifest?.files?.find((file) => file.path === path);
+  if (!manifestEntry) throw new Error("Change is not authorized by the change manifest.");
+  const contentSha256 = createHash("sha256").update(content, "utf8").digest("hex");
+  if (manifestEntry.contentSha256 !== contentSha256 || manifestEntry.bytes !== Buffer.byteLength(content, "utf8") || manifestEntry.message !== message) {
+    throw new Error("Change does not match the authoritative manifest.");
+  }
 
   let existing = null;
-  try { existing = await getRepositoryContents(owner, repo, path); }
+  try { existing = await getRepositoryContents(owner, repo, path, branchName); }
   catch (error) { if (!String(error.message).includes("Not Found")) throw error; }
   if (expectedSha && existing?.sha !== expectedSha) throw new Error("Repository file changed since the action was planned.");
 
