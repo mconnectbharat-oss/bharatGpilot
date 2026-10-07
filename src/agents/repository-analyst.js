@@ -13,7 +13,9 @@ export async function analyzeRepository(plan, inspection, dependencies = {}) {
   assertActionAllowed(ACTIONS.ANALYZE_CODE);
   assertActionAllowed(ACTIONS.ANALYZE_ISSUES);
 
-  const analysis = analyzeRepositorySignals(inspection);\n  const healthClaims = (analysis.health?.areas || []).map((area, index) => claimFromEvidence({ id: "health-" + (index + 1), statement: area.reason, evidence: (analysis.health.evidence || []).filter((item) => item.claim === area.reason) }));\n  const contributionClaims = (analysis.contribution?.opportunities || []).map((item, index) => claimFromEvidence({ id: "contribution-" + (index + 1), statement: item.rationale, evidence: [{ id: "contribution-" + (index + 1) + ":e1", classification: item.area === "existing-issue" ? "DIRECT" : "NO EVIDENCE FOUND", source: item.area === "existing-issue" ? "repository/issues/" + item.issueNumber : "repository/project-structure" }] }));
+  const analysis = analyzeRepositorySignals(inspection);
+  const healthClaims = (analysis.health?.areas || []).map((area, index) => claimFromEvidence({ id: "health-" + (index + 1), statement: area.reason, evidence: (analysis.health.evidence || []).filter((item) => item.claim === area.reason) }));
+  const contributionClaims = (analysis.contribution?.opportunities || []).map((item, index) => claimFromEvidence({ id: "contribution-" + (index + 1), statement: item.rationale, evidence: [{ id: "contribution-" + (index + 1) + ":e1", classification: item.area === "existing-issue" ? "DIRECT" : "NO EVIDENCE FOUND", source: item.area === "existing-issue" ? "repository/issues/" + item.issueNumber : "repository/project-structure" }] }));
   let next = markStep(plan, "repository", "running");
   for (const evidence of [
     ...(analysis.evidence || []),
