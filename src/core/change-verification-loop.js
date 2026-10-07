@@ -9,6 +9,7 @@ import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
 import { createActionReceipt } from "./action-receipt.js";
+import { randomUUID } from "node:crypto";
 import { createAuditRecord, appendAuditRecord } from "./audit-log.js";
 
 export async function executeVerifiedChange({
@@ -85,6 +86,9 @@ export async function executeVerifiedChange({
   });
 
   const actionReceipt = createActionReceipt({
+    actionId: randomUUID(),
+    action: ACTIONS.CREATE_PR,
+    actorId,
     review: initialReview,
     repository: plan.repository,
     baseSha: coding.branch.baseSha,
