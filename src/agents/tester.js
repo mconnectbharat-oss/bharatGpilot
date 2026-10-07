@@ -28,7 +28,7 @@ export function createTestPlan(plan, inspection) {
     claim: testDirectoryObserved
       ? "A repository test directory was directly observed."
       : "A repository test directory could not be directly verified.",
-    source: testDirectoryObserved ? "repository project structure" : "bounded repository inspection"
+    sources: testDirectoryObserved ? [{ type: "repository", location: "project structure", detail: "tests directory observed" }] : [{ type: "repository", location: "bounded inspection", detail: "tests directory not directly verified" }]
   });
 
   return {
@@ -55,7 +55,7 @@ export function recordTestResult(plan, testPlan, result) {
   next = addEvidence(next, {
     classification: result.status === "not_executed" ? "NO EVIDENCE FOUND" : "DIRECT",
     claim: result.claim || "Sandbox test execution completed with an explicit result.",
-    source: result.source || "sandbox test runner"
+    sources: [{ type: "execution", location: result.source || "sandbox test runner" }]
   });
 
   return {
