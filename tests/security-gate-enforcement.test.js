@@ -41,6 +41,7 @@ test("action gateway rejects an unsupported action-decision claim", async () => 
       review: { decision: "VERIFIED" },
       changeManifest: receipt.manifest,
       expectedBranchSha: receipt.branchHeadSha,
+      approved: true,
       actionReceipt: receipt
     }),
     /DIRECTLY supported action-decision evidence chain/
