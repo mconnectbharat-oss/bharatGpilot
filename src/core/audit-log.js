@@ -37,13 +37,13 @@ export async function appendAuditRecord(store, record) {
   return store.append(record);
 }
 
-export async function claimAuditReceipt(store, receiptHash, actionId) {
+export async function claimAuditReceipt(store, receiptHash, actionId, receipt) {
   if (!store || typeof store.claim !== "function") throw new Error("A transactional audit store with claim(receiptHash, actionId) is required.");
   if (!receiptHash || !actionId) throw new Error("Receipt hash and action id are required.");
-  return store.claim(receiptHash, actionId);
+  return store.claim(receiptHash, actionId, receipt);
 }
 
-export async function releaseAuditReceipt(store, receiptHash, actionId) {
+export async function completeAuditReceipt(store, receiptHash, actionId, pullRequest) {\n  if (!store || typeof store.complete !== "function") throw new Error("A durable audit store with complete(receiptHash, actionId, pullRequest) is required.");\n  return store.complete(receiptHash, actionId, pullRequest);\n}\n\nexport async function releaseAuditReceipt(store, receiptHash, actionId) {
   if (!store || typeof store.release !== "function") throw new Error("A transactional audit store with release(receiptHash, actionId) is required.");
   return store.release(receiptHash, actionId);
 }
@@ -94,7 +94,7 @@ export function createTransactionalAuditStore(adapter) {
     throw new Error("Transactional audit adapter requires claim, append, and release.");
   }
   return Object.freeze({
-    claim: (receiptHash, actionId) => adapter.claim(receiptHash, actionId),
+    claim: (receiptHash, actionId, receipt) => adapter.claim(receiptHash, actionId, receipt),\n    complete: (receiptHash, actionId, pullRequest) => adapter.complete(receiptHash, actionId, pullRequest),
     append: (record) => adapter.append(record),
     release: (receiptHash, actionId) => adapter.release(receiptHash, actionId),
     hasReceipt: adapter.hasReceipt ? (receiptHash) => adapter.hasReceipt(receiptHash) : undefined,
