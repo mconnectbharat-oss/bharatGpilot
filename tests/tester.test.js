@@ -22,7 +22,7 @@ test("records explicit sandbox results as evidence", () => {
     source: "sandbox runner"
   });
   assert.equal(result.testResult.execution, "EXECUTED");
-  assert.equal(result.plan.evidence.at(-1).class, "DIRECT");
+  assert.equal(result.plan.evidence.at(-1).classification, "DIRECT");
 });
 
 test("does not convert non-execution into a pass", () => {
@@ -32,5 +32,5 @@ test("does not convert non-execution into a pass", () => {
     source: "sandbox runner unavailable"
   });
   assert.equal(result.testResult.status, "not_executed");
-  assert.equal(result.plan.evidence.at(-1).class, "NO EVIDENCE FOUND");
+  assert.equal(result.plan.evidence.at(-1).classification, "NO EVIDENCE FOUND");
 });

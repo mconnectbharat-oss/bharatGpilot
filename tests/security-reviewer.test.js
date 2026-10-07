@@ -17,10 +17,10 @@ test("flags privileged workflow and process execution signals", () => {
 
 test("does not treat a clean bounded scan as proof of security", () => {
   const result = reviewSecurity(
-    { repository: { owner: "example", name: "repo" }, steps: [] },
+    { repository: { owner: "example", name: "repo" }, steps: [], evidence: [] },
     { analyzedContents: [{ path: "README.md", content: "# Example" }] }
   );
   assert.equal(result.security.status, "no_high_risk_pattern_observed");
   assert.match(result.security.disclaimer, /not a complete security audit/);
-  assert.equal(result.plan.evidence.at(-1).class, "NO EVIDENCE FOUND");
+  assert.equal(result.plan.evidence.at(-1).classification, "NO EVIDENCE FOUND");
 });
