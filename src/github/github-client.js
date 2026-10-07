@@ -61,3 +61,7 @@ export async function getRepositoryPulls(owner, repo) {
 export async function getRepositoryReleases(owner, repo) {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/releases?per_page=20");
 }
+
+export async function getCommitCheckRuns(owner, repo, ref) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/commits/" + encodeURIComponent(ref) + "/check-runs?filter=latest&per_page=100");
+}
