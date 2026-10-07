@@ -8,6 +8,15 @@ import {
   runModel,
   getAvailableProviders
 } from "./src/services/model-router.js";
+import {
+  registerUser,
+  loginUser,
+  logoutRequest,
+  requireAuth
+} from "./src/security/auth.js";
+import { getActionPolicySnapshot } from "./src/core/permissions.js";
+import { createInvestigationPlan } from "./src/core/orchestrator.js";
+
 
 dotenv.config();
 
@@ -26,6 +35,43 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     app: process.env.APP_NAME || "BharatGPilot"
   });
+});
+
+app.post("/api/auth/register", (req, res) => {
+  try {
+    res.status(201).json(registerUser(req.body ?? {}));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/login", (req, res) => {
+  try {
+    res.json(loginUser(req.body ?? {}));
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  logoutRequest(req);
+  res.status(204).end();
+});
+
+app.get("/api/auth/me", requireAuth, (req, res) => {
+  res.json({ user: req.user });
+});
+
+app.get("/api/pilot/policy", (_req, res) => {
+  res.json({ policy: getActionPolicySnapshot() });
+});
+
+app.post("/api/pilot/plan", requireAuth, (req, res) => {
+  try {
+    res.json(createInvestigationPlan(req.body?.request));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 app.get("/api/pilot/providers", (_req, res) => {
