@@ -1,4 +1,5 @@
 import { EVIDENCE_CLASSES, createEvidence } from "./evidence.js";
+export { EVIDENCE_CLASSES };
 
 export const CLAIM_STATUS = Object.freeze({
   SUPPORTED: "SUPPORTED",

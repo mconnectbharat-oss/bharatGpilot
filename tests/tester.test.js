@@ -6,7 +6,7 @@ const inspection = {
   analyzedContents: [{ path: "package.json", content: '{"scripts":{"test":"node --test"}}' }],
   projectStructure: { signals: { hasTestsDirectory: true } }
 };
-const plan = { repository: { owner: "example", name: "repo" }, steps: [] };
+const plan = { repository: { owner: "example", name: "repo" }, steps: [], evidence: [] };
 
 test("creates a bounded test plan without claiming execution", () => {
   const result = createTestPlan(plan, inspection);
