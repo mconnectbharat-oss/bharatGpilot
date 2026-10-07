@@ -26,11 +26,16 @@ export function createSandboxPolicy(options = {}) {
   });
 }
 
-export function runSandboxedTest({ command = "npm test", cwd, timeoutMs, maxOutputBytes } = {}) {
+export function runSandboxedTest({ command = "npm test", cwd, timeoutMs, maxOutputBytes, workspacePolicy } = {}) {
   if (!cwd) throw new Error("A sandbox workspace directory is required.");
 
   const normalized = normalizeCommand(command);
-  const policy = createSandboxPolicy({ timeoutMs, maxOutputBytes });
+  const policy = Object.freeze({
+    ...createSandboxPolicy({ timeoutMs, maxOutputBytes }),
+    workspaceLifecycle: workspacePolicy?.lifecycle || "UNKNOWN",
+    credentials: workspacePolicy?.credentials || "UNKNOWN",
+    network: workspacePolicy?.network || "disabled-by-runner-contract"
+  });
   const [executable, args] = SANDBOX_COMMANDS[normalized];
 
   return new Promise((resolve, reject) => {
