@@ -1,0 +1,124 @@
+
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build output
+dist/
+build/
+.next/
+.vercel/
+.output/
+
+# Temporary files and uploads
+tmp/
+temp/
+uploads/*
+!uploads/.gitkeep
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and tests
+coverage/
+.nyc_output/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local deployment files
+.vercel
+.railway/
+
+# Optional package manager files
+# Keep package-lock.json for reproducible installs.
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Secret and credential files
+.env.local
+.env.development
+.env.production
+.env.test
+.envrc
+*.pem
+*.key
+*.crt
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build output
+dist/
+build/
+.next/
+.vercel/
+.output/
+
+# Temporary files and uploads
+tmp/
+temp/
+uploads/*
+!uploads/.gitkeep
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and tests
+coverage/
+.nyc_output/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local deployment files
+.vercel
+.railway/
+
+# Optional package manager files
+# Keep package-lock.json for reproducible installs.
