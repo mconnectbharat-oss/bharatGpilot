@@ -4,7 +4,7 @@ import { reviewSecurity } from "../src/agents/security-reviewer.js";
 
 test("flags privileged workflow and process execution signals", () => {
   const result = reviewSecurity(
-    { repository: { owner: "example", name: "repo" }, steps: [] },
+    { repository: { owner: "example", name: "repo" }, steps: [], evidence: [] },
     { analyzedContents: [
       { path: ".github/workflows/ci.yml", content: "on: pull_request_target\njobs:\n  test:\n    run: node test.js" },
       { path: "src/run.js", content: "import { exec } from 'node:child_process';" }
