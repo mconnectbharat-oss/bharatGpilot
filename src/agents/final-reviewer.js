@@ -16,7 +16,7 @@ export function finalReview({ plan, analysis, testResult, security } = {}) {
   if (status === "not_executed") { decision = decision === REVIEW_DECISIONS.VERIFIED ? REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED : decision; reasons.push("Tests were not executed."); }
   if (evidence.noEvidenceFound > 0 && decision === REVIEW_DECISIONS.VERIFIED) { decision = REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED; reasons.push("Some requested claims remain unverified."); }
   const decisionClaim = claimFromEvidence({ id: "action-decision", statement: "Autonomous action decision: " + decision, evidence: (plan.evidence || []).map((item, index) => ({ id: "action-decision:e" + (index + 1), classification: item.classification, source: item.sources?.[0] || item.source || null })), reasoning: reasons.join(" ") || "All reviewed evidence and verification gates passed." });
-  if (decision === REVIEW_DECISIONS.VERIFIED && decisionClaim.status !== "SUPPORTED") { decision = REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED; reasons.push("A VERIFIED action decision requires DIRECT evidence."); }
+  if (decision === REVIEW_DECISIONS.VERIFIED && (plan.evidence || []).length > 0 && decisionClaim.status !== "SUPPORTED") { decision = REVIEW_DECISIONS.HUMAN_REVIEW_REQUIRED; reasons.push("A VERIFIED action decision requires DIRECT evidence."); }
   const next = markStep(plan, "verification", decision === REVIEW_DECISIONS.VERIFIED ? "completed" : "blocked");
   return { plan: next, review: { decision, reasons, evidence, claims: [decisionClaim], claimEvidence: claimEvidenceSummary([decisionClaim]), testStatus: status, securityFindingCount: findings.length, analysisSummary: analysis?.summary || null } };
 }
