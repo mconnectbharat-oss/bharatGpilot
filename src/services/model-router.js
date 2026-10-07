@@ -1,3 +1,4 @@
+import { MODEL_CATALOG, getModelCatalog, isKnownModel } from "./model-catalog.js";
 
 const providers = {
   openrouter: {
@@ -57,14 +58,15 @@ const providers = {
   }
 };
 
-function getConfig(providerName) {
+function getConfig(providerName, requestedModel) {
   const provider = providers[providerName];
   if (!provider) {
     throw new Error(`Unsupported provider: ${providerName}`);
   }
 
   const apiKey = process.env[provider.key];
-  const model = process.env[provider.model];
+  const configuredModel = process.env[provider.model];
+  const model = requestedModel || configuredModel;
 
   if (!apiKey || apiKey.startsWith("your_")) {
     throw new Error(`Missing API key for ${providerName}`);
@@ -74,11 +76,16 @@ function getConfig(providerName) {
     throw new Error(`Missing model ID for ${providerName}`);
   }
 
+  // Known models are documented in the catalog. Unknown models remain
+  // selectable so newly released provider models do not require a code deploy.
+  const catalog = MODEL_CATALOG[providerName];
+  const known = isKnownModel(providerName, model);
+
   const baseUrl = provider.base
     ? process.env[provider.base] || provider.defaultBase
     : null;
 
-  return { ...provider, apiKey, model, baseUrl };
+  return { ...provider, apiKey, model, baseUrl, known, capabilities: catalog?.capabilities || [] };
 }
 
 async function readResponse(response) {
@@ -152,12 +159,8 @@ async function callGemini(config, messages) {
 }
 
 async function callHuggingFace(config, messages) {
-  const prompt = messages
-    .map((message) => `${message.role}: ${message.content ?? ""}`)
-    .join("\n");
-
   const response = await fetch(
-    `https://router.huggingface.co/v1/chat/completions`,
+    "https://router.huggingface.co/v1/chat/completions",
     {
       method: "POST",
       headers: {
@@ -218,13 +221,7 @@ async function callPollinations(config, messages) {
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-export async function runModel({ provider, messages }) {
-  if (!Array.isArray(messages) || messages.length === 0) {
-    throw new Error("Messages are required");
-  }
-
-  const config = getConfig(provider);
-
+async function execute(config, messages) {
   switch (config.format) {
     case "openai":
       return callOpenAICompatible(config, messages);
@@ -241,6 +238,15 @@ export async function runModel({ provider, messages }) {
   }
 }
 
+export async function runModel({ provider, model, messages }) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error("Messages are required");
+  }
+
+  const config = getConfig(provider, model);
+  return execute(config, messages);
+}
+
 export function getAvailableProviders() {
   return Object.entries(providers)
     .filter(([name, provider]) => {
@@ -254,6 +260,19 @@ export function getAvailableProviders() {
     })
     .map(([name, provider]) => ({
       id: name,
-      model: process.env[provider.model]
+      model: process.env[provider.model],
+      knownModel: isKnownModel(name, process.env[provider.model]),
+      capabilities: MODEL_CATALOG[name]?.capabilities || []
     }));
+}
+
+export function getAvailableModels() {
+  return getModelCatalog().map((entry) => ({
+    ...entry,
+    configuredModel: process.env[providers[entry.provider]?.model] || null,
+    configured: Boolean(
+      process.env[providers[entry.provider]?.key] &&
+      !process.env[providers[entry.provider]?.key]?.startsWith("your_")
+    )
+  }));
 }
