@@ -28,3 +28,19 @@ export async function getRepository(owner, repo) {
 export async function getRepositoryContents(owner, repo, path = "") {
   return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"));
 }
+
+export async function getRepositoryReadme(owner, repo) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/readme");
+}
+
+export async function getRepositoryIssues(owner, repo) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/issues?state=all&per_page=20");
+}
+
+export async function getRepositoryPulls(owner, repo) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls?state=all&per_page=20");
+}
+
+export async function getRepositoryReleases(owner, repo) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/releases?per_page=20");
+}
