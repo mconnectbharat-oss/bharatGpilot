@@ -37,7 +37,8 @@ test("audit store rejects receipt replay", async () => {
     receipt,
     outcome: "VERIFIED"
   });
-  await claimAuditReceipt(store, receipt.receiptHash, record.actionId, receipt);\n  await appendAuditRecord(store, record);
+  await claimAuditReceipt(store, receipt.receiptHash, record.actionId, receipt);
+  await appendAuditRecord(store, record);
   await assert.rejects(() => appendAuditRecord(store, record), /already been audited/);
   assert.equal(await store.hasReceipt(receipt.receiptHash), true);
 });
