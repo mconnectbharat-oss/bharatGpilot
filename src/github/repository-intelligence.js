@@ -1,4 +1,4 @@
-import { getRepository, getRepositoryContents, getRepositoryReadme, getRepositoryIssues, getRepositoryPulls, getRepositoryReleases } from "./github-client.js";
+import { getRepository, getRepositoryContents, getRepositoryReadme, getRepositoryIssues, getRepositoryPulls, getRepositoryReleases, getRepositoryTree } from "./github-client.js";
 import { createEvidence, EVIDENCE_CLASSES } from "../evidence/index.js";
 
 export function parseRepositoryRef(value) {
@@ -31,6 +31,7 @@ export async function inspectRepository(repository) {
   const { owner, repo } = parseRepositoryRef(repository);
   const metadata = await getRepository(owner, repo);
   const root = await getRepositoryContents(owner, repo);
+  const tree = await getRepositoryTree(owner, repo, metadata.default_branch);
   const [readme, issues, pulls, releases] = await Promise.all([
     getRepositoryReadme(owner, repo).catch(() => null),
     getRepositoryIssues(owner, repo),
@@ -69,6 +70,21 @@ export async function inspectRepository(repository) {
 
   evidence.push(...issueEvidence(owner, repo, issues, pulls, releases));
 
+  const treeEntries = Array.isArray(tree?.tree) ? tree.tree : [];
+  if (tree?.truncated === true) {
+    evidence.push(createEvidence({
+      claim: "GitHub returned a truncated recursive repository tree; complete repository indexing could not be verified.",
+      classification: EVIDENCE_CLASSES.NO_EVIDENCE_FOUND,
+      sources: [{ type: "github_api", location: "/repos/" + owner + "/" + repo + "/git/trees/" + metadata.default_branch + "?recursive=1" }]
+    }));
+  } else {
+    evidence.push(createEvidence({
+      claim: "GitHub directly returned the recursive repository tree without reporting truncation.",
+      classification: EVIDENCE_CLASSES.DIRECT,
+      sources: [{ type: "github_api", location: "/repos/" + owner + "/" + repo + "/git/trees/" + metadata.default_branch + "?recursive=1" }]
+    }));
+  }
+
   if (!names.includes("README.md")) {
     evidence.push(createEvidence({
       claim: "README.md presence could not be verified at repository root.",
@@ -86,6 +102,9 @@ export async function inspectRepository(repository) {
     forks: metadata.forks_count,
     openIssues: metadata.open_issues_count,
     rootEntries: names,
+    indexedFiles: treeEntries.filter((entry) => entry.type === "blob").map((entry) => ({ path: entry.path, size: entry.size, sha: entry.sha })),
+    indexedDirectories: treeEntries.filter((entry) => entry.type === "tree").map((entry) => entry.path),
+    treeTruncated: tree?.truncated === true,
     readmeAvailable: Boolean(readme),
     issues: issues.filter((item) => !item.pull_request).map(({ number, title, state, created_at, updated_at }) => ({ number, title, state, created_at, updated_at })),
     pullRequests: pulls.map(({ number, title, state, draft, created_at, updated_at }) => ({ number, title, state, draft, created_at, updated_at })),

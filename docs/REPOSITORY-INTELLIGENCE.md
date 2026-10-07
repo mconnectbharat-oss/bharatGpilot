@@ -1,26 +1,21 @@
 # Repository intelligence
 
-The repository analysis foundation now combines several read-only GitHub API surfaces:
+The analysis foundation now uses GitHub's recursive Git tree API to index repository paths in addition to metadata, README, issues, pull requests, and releases.
 
-- repository metadata
-- root contents
-- README retrieval
-- issues
-- pull requests
-- releases
+## Recursive indexing
 
-The analysis response preserves raw, directly observed facts separately from interpretation.
+The indexed result separates:
 
-## Evidence discipline
+- `indexedFiles`: file paths, sizes, and Git object SHAs returned by GitHub
+- `indexedDirectories`: directory paths returned by GitHub
+- `treeTruncated`: whether GitHub reported that the recursive response was truncated
 
-A successful GitHub API response is DIRECT evidence that the API returned that information.
-
-Failure to retrieve a source is represented as NO EVIDENCE FOUND where appropriate. It is not treated as proof that the underlying repository property does not exist.
+GitHub documents a maximum recursive tree response of 100,000 entries / 7 MB. When GitHub reports truncation, BharatGPilot marks complete indexing as **NO EVIDENCE FOUND** rather than treating the partial tree as complete.
 
 ## Current limitations
 
-- Content indexing is currently shallow; it does not recursively index the entire repository.
-- Issue/PR/release retrieval is capped to the first 20 results per endpoint.
+- File contents are not yet ingested; this layer indexes paths and Git metadata.
+- Issues/PRs/releases are capped to the first 20 results per endpoint.
 - Health scoring and contribution recommendations are not yet implemented.
 - Authentication still uses the foundation's process-local store.
 - GitHub App installation credentials are not implemented yet.
