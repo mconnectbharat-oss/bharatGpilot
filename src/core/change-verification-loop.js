@@ -115,24 +115,31 @@ export async function executeVerifiedChange({
 
   let pullRequest = null;
   try {
-  if (createPr && reviewed.review.decision === "VERIFIED") {
-    pullRequest = await createActionPullRequest({
-      owner: plan.repository.owner,
-      repo: plan.repository.repo,
-      branchName: coding.branch.branchName,
-      baseRef: plan.repository.ref,
-      title: prTitle,
-      body: prBody,
-      review: reviewed.review,
-      approved,
-      changeManifest: coding.changeManifest,
-      expectedBranchSha: coding.expectedBranchSha,
-      actionReceipt
-    });
-  }
+    if (auditStore && typeof auditStore.append === "function") {
+      await appendAuditRecord(auditStore, {
+        ...auditRecord,
+        outcome: createPr && reviewed.review.decision === "VERIFIED" ? "AUTHORIZED" : auditRecord.outcome,
+        pullRequest: null
+      });
+    }
 
-  if (auditStore && typeof auditStore.append === "function") await appendAuditRecord(auditStore, { ...auditRecord, pullRequest });
-  if (claimRequired && !createPr) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
+    if (createPr && reviewed.review.decision === "VERIFIED") {
+      pullRequest = await createActionPullRequest({
+        owner: plan.repository.owner,
+        repo: plan.repository.repo,
+        branchName: coding.branch.branchName,
+        baseRef: plan.repository.ref,
+        title: prTitle,
+        body: prBody,
+        review: reviewed.review,
+        approved,
+        changeManifest: coding.changeManifest,
+        expectedBranchSha: coding.expectedBranchSha,
+        actionReceipt
+      });
+    }
+
+    if (claimRequired && !createPr) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
 
   return Object.freeze({
     status: reviewed.review.decision === "VERIFIED" ? "verified" : "review_required",
@@ -147,7 +154,7 @@ export async function executeVerifiedChange({
     pullRequest
   });
   } catch (error) {
-    if (claimRequired) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
+    if (claimRequired && !createPr) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
     throw error;
   }
 }
