@@ -43,24 +43,24 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
-    res.status(201).json(registerUser(req.body ?? {}));
+    res.status(201).json(await registerUser(req.body ?? {}));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
-    res.json(loginUser(req.body ?? {}));
+    res.json(await loginUser(req.body ?? {}));
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/logout", (req, res) => {
-  logoutRequest(req);
+app.post("/api/auth/logout", async (req, res) => {
+  await logoutRequest(req);
   res.status(204).end();
 });
 
