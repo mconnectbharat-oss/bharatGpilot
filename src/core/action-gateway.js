@@ -91,7 +91,13 @@ export async function createActionPullRequest({ owner, repo, branchName, baseRef
   assertActionAllowed(ACTIONS.CREATE_PR, { approved });
   if (!owner || !repo || !branchName || !title) throw new Error("owner, repo, branchName, and title are required.");
   if (!expectedBranchSha) throw new Error("Expected branch SHA is required before PR creation.");
-  const receiptCheck = verifyActionReceipt(actionReceipt);\n  if (auditStore) {\n    if (typeof auditStore.hasReceipt !== "function") throw new Error("A durable audit store with hasReceipt is required.");\n    if (!(await auditStore.hasReceipt(actionReceipt.receiptHash))) throw new Error("Authorization receipt is not durably persisted.");\n  }
+  const receiptCheck = verifyActionReceipt(actionReceipt);
+  const actionClaim = actionReceipt?.finalReview?.claims?.find((claim) => claim.id === "action-decision");
+  if (actionClaim?.status !== "SUPPORTED") throw new Error("Autonomous action requires a DIRECTLY supported action-decision evidence chain.");
+  if (auditStore) {
+    if (typeof auditStore.hasReceipt !== "function") throw new Error("A durable audit store with hasReceipt is required.");
+    if (!(await auditStore.hasReceipt(actionReceipt.receiptHash))) throw new Error("Authorization receipt is not durably persisted.");
+  }
   if (receiptCheck.status !== "VERIFIED") throw new Error("Immutable action receipt is invalid.");
   if (actionReceipt.finalReview?.decision !== "VERIFIED" || actionReceipt.changeVerification?.status !== "VERIFIED") throw new Error("Action receipt does not contain verified authorization results.");
   if (JSON.stringify(actionReceipt.manifest) !== JSON.stringify(changeManifest)) throw new Error("Action receipt manifest does not match the requested manifest.");
