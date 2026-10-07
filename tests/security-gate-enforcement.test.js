@@ -60,6 +60,7 @@ test("action gateway verifies receipt integrity after the evidence gate", async 
       review: { decision: "VERIFIED" },
       changeManifest: receipt.manifest,
       expectedBranchSha: receipt.branchHeadSha,
+      approved: true,
       actionReceipt: receipt
     }),
     /Immutable action receipt is invalid/
