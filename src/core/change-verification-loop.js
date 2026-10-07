@@ -9,7 +9,8 @@ import { inspectRepository } from "../github/repository-intelligence.js";
 import { verifyBranchAgainstManifest } from "./change-verifier.js";
 import { createActionPullRequest } from "./action-gateway.js";
 import { createActionReceipt } from "./action-receipt.js";
-import { createAuditRecord, appendAuditRecord, claimAuditReceipt, completeAuditReceipt, releaseAuditReceipt } from "./audit-log.js";
+import { createAuditRecord, appendAuditRecord, claimAuditReceipt, completeAuditReceipt } from "./audit-log.js";
+import { createPostgresAuditStore } from "./postgres-audit-store.js";
 
 export async function executeVerifiedChange({
   plan, inspection, analysis, changes, branchName, dependencies = {},
@@ -106,8 +107,8 @@ export async function executeVerifiedChange({
     pullRequest: null
   });
 
-  const auditStore = dependencies.auditStore;
-  const claimRequired = Boolean(auditStore && typeof auditStore.claim === "function" && typeof auditStore.release === "function");
+  const auditStore = dependencies.auditStore || (createPr ? createPostgresAuditStore() : null);
+  const claimRequired = Boolean(createPr && auditStore && typeof auditStore.claim === "function");
   if (createPr && reviewed.review.decision === "VERIFIED" && !claimRequired) {
     return Object.freeze({ status: "blocked", stage: "audit_claim", reason: "TRANSACTIONAL_AUDIT_STORE_REQUIRED", actionReceipt, auditRecord, review: reviewed.review });
   }
@@ -139,7 +140,7 @@ export async function executeVerifiedChange({
       });
     }
 
-    if (claimRequired && createPr && pullRequest) await completeAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId, pullRequest);\n    if (claimRequired && !createPr) await releaseAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId);
+    if (claimRequired && pullRequest) await completeAuditReceipt(auditStore, actionReceipt.receiptHash, auditRecord.actionId, pullRequest);
 
   return Object.freeze({
     status: reviewed.review.decision === "VERIFIED" ? "verified" : "review_required",
