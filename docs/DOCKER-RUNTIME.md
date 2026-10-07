@@ -1,19 +1,17 @@
-# Docker Runtime Provider
+# Docker Runtime Configuration
 
-This provider implements the isolated runtime contract with Docker.
+The Docker execution provider requires an immutable image reference ending in `@sha256:<64-hex>`.
 
-Security controls:
-- `--network none`
-- read-only container root filesystem
-- all Linux capabilities dropped
-- no-new-privileges
-- PID, CPU, and memory limits
-- non-root UID/GID
-- only the ephemeral repository workspace is writable
-- minimal environment
-- bounded execution timeout
-- automatic container removal
+Set:
 
-Docker documents namespace/cgroup isolation, resource constraints, read-only filesystems, capability dropping, and no-new-privileges. The provider intentionally does not use privileged mode, host networking, Docker socket mounts, or unrelated host filesystem mounts.
+`BHARATGPILOT_DOCKER_IMAGE=docker.io/library/node@sha256:<approved-digest>`
 
-Production requirement: the Docker daemon remains a high-value security boundary. Use a dedicated runner host with tightly controlled Docker API access.
+The runtime uses `--pull never`, so the approved image must already exist on the execution host.
+
+Do not use a mutable tag in production. Docker documents digest references as immutable and recommends pinning critical images to exact digests. citeturn0search0turn0search1
+
+Operational requirements:
+- Pre-pull the approved digest onto the isolated execution host.
+- Restrict the host/container runtime to approved images.
+- Rotate the digest deliberately when security updates are approved.
+- Keep network disabled for repository execution.
