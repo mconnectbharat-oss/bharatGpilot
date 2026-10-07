@@ -25,7 +25,7 @@ export async function appendAuditRecord(store, record) {
 
 export async function claimAuditReceipt(store, receiptHash, actionId, receipt) {
   if (!store || typeof store.claim !== "function") throw new Error("A transactional audit store with claim is required.");
-  if (!receiptHash || !actionId || !receipt) throw new Error("Receipt hash, action id, and receipt are required.");
+  if (!receiptHash || !actionId) throw new Error("Receipt hash and action id are required.");
   return store.claim(receiptHash, actionId, receipt);
 }
 
