@@ -1,0 +1,49 @@
+name: Temporary lockfile artifact
+
+on:
+  push:
+    branches:
+      - chore/lockfile-artifact-runner
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-artifact-\${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-validate:
+    name: Generate and validate package-lock.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout dedicated branch
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20.x'
+
+      - name: Generate lockfile without lifecycle scripts
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify clean reproducible installation
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Upload verified lockfile artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bharatgpilot-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 3
