@@ -5,7 +5,8 @@ on:
     branches: [main]
   merge_group:
   push:
-    branches: [main]
+    branches: [main, feat/agent-memory-n8n-foundation]
+  workflow_dispatch:
 
 permissions:
   contents: read
