@@ -121,7 +121,7 @@ app.post("/api/pilot/investigate", requireAuth, async (req, res) => {
 
 app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => {
   try {
-    const result = await inspectRepository(req.params.owner + "/" + req.params.repo);
+    const result = await inspectRepository(req.params.owner + "/" + req.params.repo, undefined, await getGitHubAccessToken(req.user.id));
     res.json(result);
   } catch (error) {
     res.status(502).json({ error: error.message });
@@ -130,7 +130,7 @@ app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => 
 
 app.get("/api/pilot/repository-analysis/:owner/:repo", requireAuth, async (req, res) => {
   try {
-    const inspection = await inspectRepository(req.params.owner + "/" + req.params.repo);
+    const inspection = await inspectRepository(req.params.owner + "/" + req.params.repo, undefined, await getGitHubAccessToken(req.user.id));
     res.json({ inspection, analysis: analyzeRepositorySignals(inspection) });
   } catch (error) {
     res.status(502).json({ error: error.message });
@@ -141,7 +141,7 @@ app.post("/api/pilot/github-intelligence", requireAuth, async (req, res) => {
   try {
     const repository = req.body?.repository;
     const question = req.body?.question || "";
-    res.json(await buildGitHubIntelligence(repository, question));
+    res.json(await buildGitHubIntelligence(repository, question, await getGitHubAccessToken(req.user.id)));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -220,6 +220,21 @@ app.post("/api/pilot/chat", requireAuth, async (req, res) => {
     const latestUserMessage = [...cleanMessages].reverse().find((message) => message.role === "user");
     const intent = detectIntent(latestUserMessage?.content || "");
 
+    async function saveTurn(answer, provider, model, githubContext) {
+      let id = conversationId;
+      if (id) {
+        const owned = await query("SELECT id FROM conversations WHERE id=$1 AND user_id=$2",[id,req.user.id]);
+        if (!owned.rows[0]) id = null;
+      }
+      if (!id) {
+        const created = await query("INSERT INTO conversations (user_id,title) VALUES ($1,$2) RETURNING id",[req.user.id,(latestUserMessage?.content || "New investigation").slice(0,120)]);
+        id = created.rows[0].id;
+      }
+      await query("INSERT INTO messages (conversation_id,role,content) VALUES ($1,$2,$3)",[id,"user",latestUserMessage?.content || ""]);
+      await query("INSERT INTO messages (conversation_id,role,content,provider,model,github_context) VALUES ($1,$2,$3,$4,$5,$6)",[id,"assistant",answer,provider,model,githubContext ? JSON.stringify(githubContext) : null]);
+      await query("UPDATE conversations SET updated_at=now() WHERE id=$1",[id]);
+      return id;
+    }
     if (intent.repository) {
       try {
         const intelligence = await buildGitHubIntelligence(
