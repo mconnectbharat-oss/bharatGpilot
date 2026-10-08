@@ -221,22 +221,6 @@ app.post("/api/pilot/chat", requireAuth, async (req, res) => {
 
     const latestUserMessage = [...cleanMessages].reverse().find((message) => message.role === "user");
     const intent = detectIntent(latestUserMessage?.content || "");
-    async function saveTurn(answer, providerName, modelName, githubContext) {
-      let id = conversationId;
-      if (id) {
-        const owned = await query("SELECT id FROM conversations WHERE id=$1 AND user_id=$2",[id,req.user.id]);
-        if (!owned.rows[0]) id = null;
-      }
-      if (!id) {
-        const created = await query("INSERT INTO conversations (user_id,title) VALUES ($1,$2) RETURNING id",[req.user.id,(latestUserMessage?.content || "New investigation").slice(0,120)]);
-        id = created.rows[0].id;
-      }
-      await query("INSERT INTO messages (conversation_id,role,content) VALUES ($1,$2,$3)",[id,"user",latestUserMessage?.content || ""]);
-      await query("INSERT INTO messages (conversation_id,role,content,provider,model,github_context) VALUES ($1,$2,$3,$4,$5,$6)",[id,"assistant",answer,providerName,modelName,githubContext ? JSON.stringify(githubContext) : null]);
-      await query("UPDATE conversations SET updated_at=now() WHERE id=$1",[id]);
-      return id;
-    }
-
     async function saveTurn(answer, provider, model, githubContext) {
       let id = conversationId;
       if (id) {
