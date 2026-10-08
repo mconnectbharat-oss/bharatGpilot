@@ -17,6 +17,8 @@ import {
   requireAuth
 } from "./src/security/auth.js";
 import { getActionPolicySnapshot } from "./src/core/permissions.js";
+import { query } from "./src/services/db.js";
+import { beginGitHubConnect, finishGitHubConnect, getGitHubAccessToken, getGitHubIdentity } from "./src/security/github-account.js";
 import { createInvestigationPlan } from "./src/core/orchestrator.js";
 import { createResearchPlan } from "./src/core/planner.js";
 import { researchRepository } from "./src/core/researcher.js";
@@ -35,7 +37,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000"
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true
 }));
 app.use(express.json({ limit: "1mb" }));
 
@@ -46,24 +49,24 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
-    res.status(201).json(registerUser(req.body ?? {}));
+    res.status(201).json(await registerUser(req.body ?? {}, res));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
-    res.json(loginUser(req.body ?? {}));
+    res.json(await loginUser(req.body ?? {}, res));
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/logout", (req, res) => {
-  logoutRequest(req);
+app.post("/api/auth/logout", async (req, res) => {
+  await logoutRequest(req, res);
   res.status(204).end();
 });
 
@@ -71,6 +74,26 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+app.get("/api/github/connect", requireAuth, async (req, res) => {
+  try { res.json({ url: await beginGitHubConnect(req, res) }); }
+  catch (error) { res.status(400).json({ error: error.message }); }
+});
+app.get("/api/github/oauth/callback", async (req, res) => {
+  try { await finishGitHubConnect(req, res); res.redirect("/?github=connected"); }
+  catch (error) { res.redirect("/?github=error&message=" + encodeURIComponent(error.message)); }
+});
+app.get("/api/github/identity", requireAuth, async (req, res) => {
+  try { res.json({ github: await getGitHubIdentity(req.user.id) }); }
+  catch { res.status(503).json({ error: "Identity service unavailable." }); }
+});
+app.get("/api/conversations", requireAuth, async (req, res) => {
+  try { const result = await query("SELECT id,title,created_at,updated_at FROM conversations WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 50",[req.user.id]); res.json({ conversations: result.rows }); }
+  catch { res.status(503).json({ error: "Conversation service unavailable." }); }
+});
+app.get("/api/conversations/:id/messages", requireAuth, async (req, res) => {
+  try { const result = await query("SELECT m.id,m.role,m.content,m.provider,m.model,m.github_context,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.id=$1 AND c.user_id=$2 ORDER BY m.created_at ASC",[req.params.id,req.user.id]); res.json({ messages: result.rows }); }
+  catch { res.status(503).json({ error: "Conversation service unavailable." }); }
+});
 app.get("/api/pilot/policy", (_req, res) => {
   res.json({ policy: getActionPolicySnapshot() });
 });
@@ -99,7 +122,7 @@ app.post("/api/pilot/investigate", requireAuth, async (req, res) => {
 
 app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => {
   try {
-    const result = await inspectRepository(req.params.owner + "/" + req.params.repo);
+    const result = await inspectRepository(req.params.owner + "/" + req.params.repo, undefined, await getGitHubAccessToken(req.user.id));
     res.json(result);
   } catch (error) {
     res.status(502).json({ error: error.message });
@@ -108,7 +131,7 @@ app.get("/api/github/repository/:owner/:repo", requireAuth, async (req, res) => 
 
 app.get("/api/pilot/repository-analysis/:owner/:repo", requireAuth, async (req, res) => {
   try {
-    const inspection = await inspectRepository(req.params.owner + "/" + req.params.repo);
+    const inspection = await inspectRepository(req.params.owner + "/" + req.params.repo, undefined, await getGitHubAccessToken(req.user.id));
     res.json({ inspection, analysis: analyzeRepositorySignals(inspection) });
   } catch (error) {
     res.status(502).json({ error: error.message });
@@ -119,7 +142,7 @@ app.post("/api/pilot/github-intelligence", requireAuth, async (req, res) => {
   try {
     const repository = req.body?.repository;
     const question = req.body?.question || "";
-    res.json(await buildGitHubIntelligence(repository, question));
+    res.json(await buildGitHubIntelligence(repository, question, await getGitHubAccessToken(req.user.id)));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -149,12 +172,13 @@ app.get("/api/pilot/models", (_req, res) => {
   });
 });
 
-app.post("/api/pilot/chat", async (req, res) => {
+app.post("/api/pilot/chat", requireAuth, async (req, res) => {
   try {
     const {
       provider = "auto",
       model,
-      messages
+      messages,
+      conversationId
     } = req.body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -197,14 +221,47 @@ app.post("/api/pilot/chat", async (req, res) => {
 
     const latestUserMessage = [...cleanMessages].reverse().find((message) => message.role === "user");
     const intent = detectIntent(latestUserMessage?.content || "");
+    async function saveTurn(answer, providerName, modelName, githubContext) {
+      let id = conversationId;
+      if (id) {
+        const owned = await query("SELECT id FROM conversations WHERE id=$1 AND user_id=$2",[id,req.user.id]);
+        if (!owned.rows[0]) id = null;
+      }
+      if (!id) {
+        const created = await query("INSERT INTO conversations (user_id,title) VALUES ($1,$2) RETURNING id",[req.user.id,(latestUserMessage?.content || "New investigation").slice(0,120)]);
+        id = created.rows[0].id;
+      }
+      await query("INSERT INTO messages (conversation_id,role,content) VALUES ($1,$2,$3)",[id,"user",latestUserMessage?.content || ""]);
+      await query("INSERT INTO messages (conversation_id,role,content,provider,model,github_context) VALUES ($1,$2,$3,$4,$5,$6)",[id,"assistant",answer,providerName,modelName,githubContext ? JSON.stringify(githubContext) : null]);
+      await query("UPDATE conversations SET updated_at=now() WHERE id=$1",[id]);
+      return id;
+    }
 
+    async function saveTurn(answer, provider, model, githubContext) {
+      let id = conversationId;
+      if (id) {
+        const owned = await query("SELECT id FROM conversations WHERE id=$1 AND user_id=$2",[id,req.user.id]);
+        if (!owned.rows[0]) id = null;
+      }
+      if (!id) {
+        const created = await query("INSERT INTO conversations (user_id,title) VALUES ($1,$2) RETURNING id",[req.user.id,(latestUserMessage?.content || "New investigation").slice(0,120)]);
+        id = created.rows[0].id;
+      }
+      await query("INSERT INTO messages (conversation_id,role,content) VALUES ($1,$2,$3)",[id,"user",latestUserMessage?.content || ""]);
+      await query("INSERT INTO messages (conversation_id,role,content,provider,model,github_context) VALUES ($1,$2,$3,$4,$5,$6)",[id,"assistant",answer,provider,model,githubContext ? JSON.stringify(githubContext) : null]);
+      await query("UPDATE conversations SET updated_at=now() WHERE id=$1",[id]);
+      return id;
+    }
     if (intent.repository) {
       try {
         const intelligence = await buildGitHubIntelligence(
           `${intent.repository.owner}/${intent.repository.repo}`,
-          latestUserMessage?.content || ""
+          latestUserMessage?.content || "",
+          await getGitHubAccessToken(req.user.id)
         );
+        const savedConversationId = await saveTurn(intelligence.response?.answer || JSON.stringify(intelligence.brief), "github-intelligence", null, { repository: intelligence.repository, evidence: intelligence.brief.evidenceSummary, sources: intelligence.sources, coverage: intelligence.brief.coverage });
         return res.json({
+          conversationId: savedConversationId,
           provider: "github-intelligence",
           model: null,
           answer: intelligence.response?.answer || intelligence.brief,
@@ -232,7 +289,9 @@ app.post("/api/pilot/chat", async (req, res) => {
       messages: enrichedMessages
     });
 
+    const savedConversationId = await saveTurn(result.answer, result.provider, result.model, null);
     res.json({
+      conversationId: savedConversationId,
       provider: result.provider,
       model: result.model,
       answer: result.answer,

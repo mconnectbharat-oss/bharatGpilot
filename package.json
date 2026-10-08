@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "@vercel/node": "^5.3.21",

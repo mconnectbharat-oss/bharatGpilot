@@ -11,7 +11,7 @@ export async function githubRequest(path, options = {}) {
     ...options,
     headers: {
       Accept: "application/vnd.github+json",
-      Authorization: "Bearer " + tokenFromEnv(),
+      Authorization: "Bearer " + (options.token || tokenFromEnv()),
       "X-GitHub-Api-Version": "2022-11-28",
       ...(options.headers || {})
     }
@@ -21,47 +21,47 @@ export async function githubRequest(path, options = {}) {
   return data;
 }
 
-export async function getRepository(owner, repo) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo));
+export async function getRepository(owner, repo, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo), { token });
 }
 
-export async function getRepositoryRef(owner, repo, ref) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/ref/heads/" + encodeURIComponent(ref));
+export async function getRepositoryRef(owner, repo, ref, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/ref/heads/" + encodeURIComponent(ref), { token });
 }
 
-export async function compareRepositoryRefs(owner, repo, base, head) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/compare/" + encodeURIComponent(base) + "..." + encodeURIComponent(head));
+export async function compareRepositoryRefs(owner, repo, base, head, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/compare/" + encodeURIComponent(base) + "..." + encodeURIComponent(head), { token });
 }
 
-export async function getRepositoryContents(owner, repo, path = "") {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"));
+export async function getRepositoryContents(owner, repo, path = "", token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/contents/" + path.split("/").map(encodeURIComponent).join("/"), { token });
 }
 
-export async function getRepositoryBlob(owner, repo, fileSha) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/blobs/" + encodeURIComponent(fileSha));
+export async function getRepositoryBlob(owner, repo, fileSha, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/blobs/" + encodeURIComponent(fileSha), { token });
 }
 
-export async function getRepositoryTree(owner, repo, treeSha) {
+export async function getRepositoryTree(owner, repo, treeSha, token) {
   const encodedTree = encodeURIComponent(treeSha);
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/trees/" + encodedTree + "?recursive=1");
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/git/trees/" + encodedTree + "?recursive=1", { token });
 }
 
-export async function getRepositoryReadme(owner, repo) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/readme");
+export async function getRepositoryReadme(owner, repo, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/readme", { token });
 }
 
-export async function getRepositoryIssues(owner, repo) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/issues?state=all&per_page=20");
+export async function getRepositoryIssues(owner, repo, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/issues?state=all&per_page=20", { token });
 }
 
-export async function getRepositoryPulls(owner, repo) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls?state=all&per_page=20");
+export async function getRepositoryPulls(owner, repo, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/pulls?state=all&per_page=20", { token });
 }
 
-export async function getRepositoryReleases(owner, repo) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/releases?per_page=20");
+export async function getRepositoryReleases(owner, repo, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/releases?per_page=20", { token });
 }
 
-export async function getCommitCheckRuns(owner, repo, ref) {
-  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/commits/" + encodeURIComponent(ref) + "/check-runs?filter=latest&per_page=100");
+export async function getCommitCheckRuns(owner, repo, ref, token) {
+  return githubRequest("/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/commits/" + encodeURIComponent(ref) + "/check-runs?filter=latest&per_page=100", { token });
 }
