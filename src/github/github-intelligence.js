@@ -2,9 +2,9 @@ import { inspectRepository, parseRepositoryRef } from "./repository-intelligence
 import { analyzeRepositorySignals } from "./repository-analysis.js";
 import { buildRepositoryBrief, answerRepositoryQuestion } from "./repository-brief.js";
 
-export async function buildGitHubIntelligence(repository, question = "") {
+export async function buildGitHubIntelligence(repository, question = "", token) {
   const ref = parseRepositoryRef(repository);
-  const inspection = await inspectRepository(`${ref.owner}/${ref.repo}`);
+  const inspection = await inspectRepository(`${ref.owner}/${ref.repo}`, undefined, token);
   const analysis = analyzeRepositorySignals(inspection);
   const brief = buildRepositoryBrief(inspection, analysis);
   const response = question ? answerRepositoryQuestion(question, brief) : null;
