@@ -24,6 +24,7 @@ import { analyzeRepository } from "./src/agents/repository-analyst.js";
 import { inspectRepository } from "./src/github/repository-intelligence.js";
 import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
 import { detectIntent, buildCopilotSystemPrompt } from "./src/services/intent-engine.js";
+import { buildGitHubIntelligence } from "./src/github/github-intelligence.js";
 
 
 dotenv.config();
@@ -111,6 +112,16 @@ app.get("/api/pilot/repository-analysis/:owner/:repo", requireAuth, async (req, 
     res.json({ inspection, analysis: analyzeRepositorySignals(inspection) });
   } catch (error) {
     res.status(502).json({ error: error.message });
+  }
+});
+
+app.post("/api/pilot/github-intelligence", requireAuth, async (req, res) => {
+  try {
+    const repository = req.body?.repository;
+    const question = req.body?.question || "";
+    res.json(await buildGitHubIntelligence(repository, question));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
