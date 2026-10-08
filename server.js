@@ -17,6 +17,8 @@ import {
   requireAuth
 } from "./src/security/auth.js";
 import { getActionPolicySnapshot } from "./src/core/permissions.js";
+import { query } from "./src/services/db.js";
+import { beginGitHubConnect, finishGitHubConnect, getGitHubAccessToken, getGitHubIdentity } from "./src/security/github-account.js";
 import { createInvestigationPlan } from "./src/core/orchestrator.js";
 import { createResearchPlan } from "./src/core/planner.js";
 import { researchRepository } from "./src/core/researcher.js";
@@ -46,24 +48,24 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
-    res.status(201).json(registerUser(req.body ?? {}));
+    res.status(201).json(await registerUser(req.body ?? {}, res));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
-    res.json(loginUser(req.body ?? {}));
+    res.json(await loginUser(req.body ?? {}, res));
   } catch (error) {
     res.status(401).json({ error: error.message });
   }
 });
 
-app.post("/api/auth/logout", (req, res) => {
-  logoutRequest(req);
+app.post("/api/auth/logout", async (req, res) => {
+  await logoutRequest(req, res);
   res.status(204).end();
 });
 
@@ -71,6 +73,26 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+app.get("/api/github/connect", requireAuth, async (req, res) => {
+  try { res.json({ url: await beginGitHubConnect(req, res) }); }
+  catch (error) { res.status(400).json({ error: error.message }); }
+});
+app.get("/api/github/oauth/callback", async (req, res) => {
+  try { await finishGitHubConnect(req, res); res.redirect("/?github=connected"); }
+  catch (error) { res.redirect("/?github=error&message=" + encodeURIComponent(error.message)); }
+});
+app.get("/api/github/identity", requireAuth, async (req, res) => {
+  try { res.json({ github: await getGitHubIdentity(req.user.id) }); }
+  catch { res.status(503).json({ error: "Identity service unavailable." }); }
+});
+app.get("/api/conversations", requireAuth, async (req, res) => {
+  try { const result = await query("SELECT id,title,created_at,updated_at FROM conversations WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 50",[req.user.id]); res.json({ conversations: result.rows }); }
+  catch { res.status(503).json({ error: "Conversation service unavailable." }); }
+});
+app.get("/api/conversations/:id/messages", requireAuth, async (req, res) => {
+  try { const result = await query("SELECT m.id,m.role,m.content,m.provider,m.model,m.github_context,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.id=$1 AND c.user_id=$2 ORDER BY m.created_at ASC",[req.params.id,req.user.id]); res.json({ messages: result.rows }); }
+  catch { res.status(503).json({ error: "Conversation service unavailable." }); }
+});
 app.get("/api/pilot/policy", (_req, res) => {
   res.json({ policy: getActionPolicySnapshot() });
 });
@@ -149,7 +171,7 @@ app.get("/api/pilot/models", (_req, res) => {
   });
 });
 
-app.post("/api/pilot/chat", async (req, res) => {
+app.post("/api/pilot/chat", requireAuth, async (req, res) => {
   try {
     const {
       provider = "auto",
