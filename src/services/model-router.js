@@ -245,9 +245,17 @@ async function execute(config, messages) {
 
 function resolveCandidates({ provider = "auto", model } = {}) {
   if (provider !== "auto") return [{ provider, model }];
+
   return routerOrder()
-    .filter((name) => configured(process.env[providers[name].key]) && configured(model || process.env[providers[name].model]))
-    .map((name) => ({ provider: name, model }));
+    .filter((name) => {
+      if (!configured(process.env[providers[name].key])) return false;
+      if (!model) return configured(process.env[providers[name].model]);
+      return isKnownModel(name, model) || process.env[providers[name].model] === model;
+    })
+    .map((name) => ({
+      provider: name,
+      model: model || process.env[providers[name].model]
+    }));
 }
 
 export async function runModelDetailed({ provider = "auto", model, messages } = {}) {
