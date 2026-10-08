@@ -38,7 +38,7 @@ jobs:
       - name: Run test suite
         run: npm test
 
-      - name: Type-check TypeScript contracts
+      - name: Type-check TypeScript contracts and provider services
         run: npm run typecheck
 
   security-gate:
