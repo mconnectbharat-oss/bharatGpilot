@@ -5,9 +5,10 @@ import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  runModel,
+  runModelDetailed,
   getAvailableProviders,
-  getAvailableModels
+  getAvailableModels,
+  getRouterConfig
 } from "./src/services/model-router.js";
 import {
   registerUser,
@@ -118,6 +119,10 @@ app.get("/api/pilot/providers", (_req, res) => {
   });
 });
 
+app.get("/api/pilot/router", (_req, res) => {
+  res.json({ router: getRouterConfig() });
+});
+
 app.get("/api/pilot/models", (_req, res) => {
   res.json({
     models: getAvailableModels()
@@ -127,7 +132,7 @@ app.get("/api/pilot/models", (_req, res) => {
 app.post("/api/pilot/chat", async (req, res) => {
   try {
     const {
-      provider = "openrouter",
+      provider = "auto",
       model,
       messages
     } = req.body ?? {};
@@ -170,15 +175,21 @@ app.post("/api/pilot/chat", async (req, res) => {
       });
     }
 
-    const answer = await runModel({
+    const result = await runModelDetailed({
       provider,
       model,
       messages: cleanMessages
     });
 
     res.json({
-      provider,
-      answer
+      provider: result.provider,
+      model: result.model,
+      answer: result.answer,
+      routing: {
+        attempts: result.attempts,
+        fallbackUsed: result.fallbackUsed,
+        latencyMs: result.latencyMs
+      }
     });
   } catch (error) {
     console.error("Chat error:", error.message);
