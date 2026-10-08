@@ -29,17 +29,17 @@ function issueEvidence(owner, repo, issues, pulls, releases) {
   ];
 }
 
-export async function inspectRepository(repository, ref) {
+export async function inspectRepository(repository, ref, token) {
   const { owner, repo } = parseRepositoryRef(repository);
-  const metadata = await getRepository(owner, repo);
-  const root = await getRepositoryContents(owner, repo);
+  const metadata = await getRepository(owner, repo, token);
+  const root = await getRepositoryContents(owner, repo, "", token);
   const resolvedRef = ref || metadata.default_branch;
-  const tree = await getRepositoryTree(owner, repo, resolvedRef);
+  const tree = await getRepositoryTree(owner, repo, resolvedRef, token);
   const [readme, issues, pulls, releases] = await Promise.all([
-    getRepositoryReadme(owner, repo).catch(() => null),
-    getRepositoryIssues(owner, repo),
-    getRepositoryPulls(owner, repo),
-    getRepositoryReleases(owner, repo)
+    getRepositoryReadme(owner, repo, token).catch(() => null),
+    getRepositoryIssues(owner, repo, token),
+    getRepositoryPulls(owner, repo, token),
+    getRepositoryReleases(owner, repo, token)
   ]);
   const entries = Array.isArray(root) ? root : [];
   const names = entries.map((entry) => entry.name);
@@ -77,7 +77,7 @@ export async function inspectRepository(repository, ref) {
   const contentCandidates = selectContentCandidates(treeEntries);
   const contents = {};
   for (const file of contentCandidates) {
-    try { contents[file.path] = decodeBlob(await getRepositoryBlob(owner, repo, file.sha)); } catch { /* unavailable content remains unverified */ }
+    try { contents[file.path] = decodeBlob(await getRepositoryBlob(owner, repo, file.sha, token)); } catch { /* unavailable content remains unverified */ }
   }
   const projectStructure = analyzeProjectStructure(treeEntries, contents);
   if (tree?.truncated === true) {
