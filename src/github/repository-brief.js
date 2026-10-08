@@ -13,7 +13,6 @@ export function buildRepositoryBrief(inspection, analysis = {}) {
 
   const understanding = analysis.understanding || {};
   const health = analysis.health || {};
-  const structure = inspection.projectStructure || {};
   const facts = [];
 
   if (inspection.language) facts.push(fact(inspection.language, "repository metadata"));
@@ -28,11 +27,7 @@ export function buildRepositoryBrief(inspection, analysis = {}) {
     facts.push(fact(item.technology, item.source || "repository structure", item.evidence || "DIRECT"));
   }
 
-  const evidence = [
-    ...(inspection.evidence || []),
-    ...(analysis.evidence || [])
-  ];
-
+  const evidence = [...(inspection.evidence || []), ...(analysis.evidence || [])];
   const direct = evidence.filter((item) => item.classification === "DIRECT").length;
   const indirect = evidence.filter((item) => item.classification === "INDIRECT").length;
   const noEvidence = evidence.filter((item) => item.classification === "NO_EVIDENCE_FOUND").length;
@@ -45,7 +40,7 @@ export function buildRepositoryBrief(inspection, analysis = {}) {
       purpose: understanding.purposeSignals?.[0]?.value || null,
       stack: understanding.stack || [],
       entrypoints: understanding.entrypoints || [],
-      health: health,
+      health
     },
     facts,
     evidenceSummary: { direct, indirect, noEvidence },
@@ -65,7 +60,7 @@ export function answerRepositoryQuestion(question, brief) {
       answer: brief.summary.purpose
         ? `${brief.repository}: ${brief.summary.purpose}`
         : `No direct project-purpose evidence was found for ${brief.repository} in the inspected content.`,
-      evidence: brief.facts.filter((item) => /description|readme/i.test(item.source || "")).slice(0, 5)
+      evidence: brief.facts.filter((item) => /description|readme|package\.json/i.test(item.source || "")).slice(0, 5)
     };
   }
 
