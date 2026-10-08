@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { registerUser, loginUser } from "../src/security/auth.js";
 
-test("register validates credentials before requiring a database", async () => {
+test("register validates short passwords before requiring a database", async () => {
   await assert.rejects(() => registerUser({ email: "user@example.com", password: "short" }), /12/);
 });
 
-test("login validates credentials before requiring a database", async () => {
+test("login validates short passwords before requiring a database", async () => {
   await assert.rejects(() => loginUser({ email: "missing@example.com", password: "short" }), /12/);
 });
 
