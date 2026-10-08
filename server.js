@@ -23,6 +23,7 @@ import { researchRepository } from "./src/core/researcher.js";
 import { analyzeRepository } from "./src/agents/repository-analyst.js";
 import { inspectRepository } from "./src/github/repository-intelligence.js";
 import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
+import { detectIntent, buildCopilotSystemPrompt } from "./src/services/intent-engine.js";
 
 
 dotenv.config();
@@ -119,6 +120,14 @@ app.get("/api/pilot/providers", (_req, res) => {
   });
 });
 
+app.post("/api/pilot/intent", requireAuth, (req, res) => {
+  try {
+    res.json({ intent: detectIntent(req.body?.input ?? "") });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.get("/api/pilot/router", (_req, res) => {
   res.json({ router: getRouterConfig() });
 });
@@ -175,10 +184,17 @@ app.post("/api/pilot/chat", async (req, res) => {
       });
     }
 
+    const latestUserMessage = [...cleanMessages].reverse().find((message) => message.role === "user");
+    const intent = detectIntent(latestUserMessage?.content || "");
+    const hasSystemMessage = cleanMessages.some((message) => message.role === "system");
+    const enrichedMessages = hasSystemMessage
+      ? cleanMessages
+      : [{ role: "system", content: buildCopilotSystemPrompt(intent) }, ...cleanMessages];
+
     const result = await runModelDetailed({
       provider,
       model,
-      messages: cleanMessages
+      messages: enrichedMessages
     });
 
     res.json({
@@ -189,7 +205,8 @@ app.post("/api/pilot/chat", async (req, res) => {
         attempts: result.attempts,
         fallbackUsed: result.fallbackUsed,
         latencyMs: result.latencyMs
-      }
+      },
+      intent
     });
   } catch (error) {
     console.error("Chat error:", error.message);
