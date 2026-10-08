@@ -23,3 +23,15 @@ test("builds an evidence-first system prompt", () => {
   assert.match(prompt, /NO_EVIDENCE_FOUND/);
   assert.match(prompt, /research/);
 });
+
+
+test("extracts owner/repo from a GitHub URL", () => {
+  const result = detectIntent("What does https://github.com/facebook/react do?");
+  assert.equal(result.intent, "github_repository");
+  assert.deepEqual(result.repository, { owner: "facebook", repo: "react" });
+});
+
+test("extracts owner/repo from natural repository wording", () => {
+  const result = detectIntent("What does facebook/react do?");
+  assert.deepEqual(result.repository, { owner: "facebook", repo: "react" });
+});
