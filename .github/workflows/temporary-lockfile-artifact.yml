@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chore/lockfile-artifact-runner
+      - security/validate-transitive-overrides
   workflow_dispatch:
 
 permissions:
@@ -17,9 +18,9 @@ jobs:
   generate-and-validate:
     name: Generate and validate package-lock.json
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Checkout dedicated branch
+      - name: Checkout isolated validation branch
         uses: actions/checkout@v6
 
       - name: Set up Node.js
@@ -27,23 +28,34 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Generate lockfile without lifecycle scripts
+      - name: Generate candidate lockfile without lifecycle scripts
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Verify clean reproducible installation
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Upload lockfile verified by clean install
-        if: success()
+      - name: Show resolved transitive versions
+        run: npm ls path-to-regexp undici --all
+
+      - name: Run npm audit and preserve report
+        id: audit
+        continue-on-error: true
+        run: npm audit --json > npm-audit.json
+
+      - name: Upload candidate lockfile and audit report
+        if: always() && steps.audit.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
-          name: bharatgpilot-package-lock
-          path: package-lock.json
+          name: bharatgpilot-security-validation
+          path: |
+            package-lock.json
+            npm-audit.json
           if-no-files-found: error
           retention-days: 3
 
       - name: Run tests
         run: npm test
 
-      - name: Type-check
+      - name: Type-check even if tests fail
+        if: always()
         run: npm run typecheck
