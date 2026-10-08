@@ -27,6 +27,9 @@ import { inspectRepository } from "./src/github/repository-intelligence.js";
 import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
 import { detectIntent, buildCopilotSystemPrompt } from "./src/services/intent-engine.js";
 import { buildGitHubIntelligence } from "./src/github/github-intelligence.js";
+import { listMemories, createMemory, deleteMemory } from "./src/services/agent-memory.js";
+import { dispatchAutomationEvent, getAutomationStatus } from "./src/services/n8n-automation.js";
+
 
 
 dotenv.config();
@@ -294,6 +297,54 @@ app.post("/api/pilot/chat", requireAuth, async (req, res) => {
         ? error.message
         : undefined
     });
+  }
+});
+
+
+app.get("/api/pilot/memory", requireAuth, async (req, res) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));
+    res.json({ memories: await listMemories(req.user.id, limit) });
+  } catch (error) {
+    res.status(503).json({ error: "Memory service unavailable." });
+  }
+});
+
+app.post("/api/pilot/memory", requireAuth, async (req, res) => {
+  try {
+    const { content, category = "general", source = "user" } = req.body ?? {};
+    const memory = await createMemory(req.user.id, { content, category, source });
+    res.status(201).json({ memory });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Invalid memory." });
+  }
+});
+
+app.delete("/api/pilot/memory/:id", requireAuth, async (req, res) => {
+  try {
+    const deleted = await deleteMemory(req.user.id, req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Memory not found." });
+    res.status(204).end();
+  } catch {
+    res.status(503).json({ error: "Memory service unavailable." });
+  }
+});
+
+app.get("/api/pilot/automation/status", requireAuth, (_req, res) => {
+  res.json({ automation: getAutomationStatus() });
+});
+
+app.post("/api/pilot/automation/dispatch", requireAuth, async (req, res) => {
+  try {
+    const { event, payload = {} } = req.body ?? {};
+    const result = await dispatchAutomationEvent({
+      userId: req.user.id,
+      event,
+      payload
+    });
+    res.status(result.dispatched ? 202 : 200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Automation dispatch failed." });
   }
 });
 
