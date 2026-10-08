@@ -1,5 +1,13 @@
 import { MODEL_CATALOG, getModelCatalog, isKnownModel } from "./model-catalog.js";
 
+const DEFAULT_ROUTER_ORDER = ["openrouter","gemini","groq","cerebras","mistral","nvidia","cloudflare","huggingface","pollinations"];
+const TRANSIENT_STATUS = new Set([408,409,425,429,500,502,503,504]);
+const configured = (value) => Boolean(value && !String(value).startsWith("your_"));
+function routerOrder() {
+  const custom = String(process.env.MODEL_ROUTER_ORDER || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean);
+  return [...new Set(custom.length ? custom : DEFAULT_ROUTER_ORDER)].filter((name) => providers[name]);
+}
+
 const providers = {
   openrouter: {
     key: "OPENROUTER_API_KEY",
@@ -68,11 +76,11 @@ function getConfig(providerName, requestedModel) {
   const configuredModel = process.env[provider.model];
   const model = requestedModel || configuredModel;
 
-  if (!apiKey || apiKey.startsWith("your_")) {
+  if (!configured(apiKey)) {
     throw new Error(`Missing API key for ${providerName}`);
   }
 
-  if (!model || model.startsWith("your_")) {
+  if (!configured(model)) {
     throw new Error(`Missing model ID for ${providerName}`);
   }
 
@@ -90,15 +98,12 @@ function getConfig(providerName, requestedModel) {
 
 async function readResponse(response) {
   const data = await response.json().catch(() => ({}));
-
   if (!response.ok) {
-    const message =
-      data?.error?.message ||
-      data?.message ||
-      `Provider request failed (${response.status})`;
-    throw new Error(message);
+    const error = new Error(data?.error?.message || data?.message || `Provider request failed (${response.status})`);
+    error.status = response.status;
+    error.retryable = TRANSIENT_STATUS.has(response.status) || response.status >= 500;
+    throw error;
   }
-
   return data;
 }
 
@@ -238,13 +243,37 @@ async function execute(config, messages) {
   }
 }
 
-export async function runModel({ provider, model, messages }) {
-  if (!Array.isArray(messages) || messages.length === 0) {
-    throw new Error("Messages are required");
-  }
+function resolveCandidates({ provider = "auto", model } = {}) {
+  if (provider !== "auto") return [{ provider, model }];
+  return routerOrder()
+    .filter((name) => configured(process.env[providers[name].key]) && configured(model || process.env[providers[name].model]))
+    .map((name) => ({ provider: name, model }));
+}
 
-  const config = getConfig(provider, model);
-  return execute(config, messages);
+export async function runModelDetailed({ provider = "auto", model, messages } = {}) {
+  if (!Array.isArray(messages) || messages.length === 0) throw new Error("Messages are required");
+  const candidates = resolveCandidates({ provider, model });
+  if (!candidates.length) throw new Error("No configured AI provider is available.");
+  const failures = [];
+  for (const candidate of candidates) {
+    try {
+      const config = getConfig(candidate.provider, candidate.model);
+      const started = Date.now();
+      const answer = await execute(config, messages);
+      if (!String(answer).trim()) throw new Error("Provider returned an empty response.");
+      return { answer, provider: candidate.provider, model: config.model, latencyMs: Date.now() - started, attempts: failures.length + 1, fallbackUsed: failures.length > 0, failures };
+    } catch (error) {
+      failures.push({ provider: candidate.provider, model: candidate.model || null, status: error.status || null, retryable: Boolean(error.retryable), message: error.message });
+      if (provider !== "auto") break;
+    }
+  }
+  const error = new Error("All configured AI providers failed.");
+  error.failures = failures;
+  throw error;
+}
+
+export async function runModel(args) {
+  return (await runModelDetailed(args)).answer;
 }
 
 export function getAvailableProviders() {
@@ -275,4 +304,13 @@ export function getAvailableModels() {
       !process.env[providers[entry.provider]?.key]?.startsWith("your_")
     )
   }));
+}
+
+
+export function getRouterConfig() {
+  return {
+    mode: "automatic-failover",
+    order: routerOrder(),
+    configuredProviders: getAvailableProviders().map((provider) => provider.id)
+  };
 }
