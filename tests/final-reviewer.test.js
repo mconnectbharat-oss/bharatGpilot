@@ -39,5 +39,5 @@ test("only VERIFIED reviews can pass the autonomous action gate", () => {
   });
   // With no unverified evidence, this can proceed.
   assert.equal(result.review.decision, REVIEW_DECISIONS.VERIFIED);
-  assert.equal(actionDisposition(result.review, "CREATE_BRANCH").allowed, true);
+  assert.equal(actionDisposition(result.review, "create_branch").allowed, true);
 });
