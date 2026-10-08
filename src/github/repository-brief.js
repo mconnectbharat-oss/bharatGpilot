@@ -56,11 +56,16 @@ export function answerRepositoryQuestion(question, brief) {
   if (!brief?.repository) throw new Error("Repository brief is required.");
 
   if (/what.*(do|purpose)|purpose|about/.test(q)) {
+    const purposeEvidence = brief.facts.find(
+      (item) => item.value === brief.summary.purpose
+        && /description|readme|package\.json/i.test(item.source || "")
+    );
+
     return {
       answer: brief.summary.purpose
         ? `${brief.repository}: ${brief.summary.purpose}`
         : `No direct project-purpose evidence was found for ${brief.repository} in the inspected content.`,
-      evidence: brief.facts.filter((item) => /description|readme|package\.json/i.test(item.source || "")).slice(0, 5)
+      evidence: purposeEvidence ? [purposeEvidence] : []
     };
   }
 
