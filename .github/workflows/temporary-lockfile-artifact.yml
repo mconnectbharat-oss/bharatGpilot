@@ -33,13 +33,7 @@ jobs:
       - name: Verify clean reproducible installation
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Run tests
-        run: npm test
-
-      - name: Type-check
-        run: npm run typecheck
-
-      - name: Upload verified lockfile artifact
+      - name: Upload lockfile verified by clean install
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -47,3 +41,9 @@ jobs:
           path: package-lock.json
           if-no-files-found: error
           retention-days: 3
+
+      - name: Run tests
+        run: npm test
+
+      - name: Type-check
+        run: npm run typecheck
