@@ -19,19 +19,21 @@ const CAPABILITY_BY_INTENT = Object.freeze({
   creative: ["chat"]
 });
 
-
 export function extractGitHubRepository(input = "") {
   const text = String(input).trim();
-  const url = text.match(/(?:https?:\\/\\/)?(?:www\\.)?github\\.com\\/([A-Za-z0-9_.-]+)\\/([A-Za-z0-9_.-]+)(?:[/?#\\s]|$)/i);
-  if (url) return { owner: url[1], repo: url[2].replace(/\\.git$/i, "") };
-  const pair = text.match(/(?:^|\\s)([A-Za-z0-9_.-]+)\\/([A-Za-z0-9_.-]+)(?=\\s|[?.,!]|$)/);
+  const url = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:[/?#\s]|$)/i);
+  if (url) return { owner: url[1], repo: url[2].replace(/\.git$/i, "") };
+
+  const pair = text.match(/(?:^|\s)([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?=\s|[?.,!]|$)/);
   if (pair && /github|repo(sitory)?|project|what does|how does|about/i.test(text)) {
-    return { owner: pair[1], repo: pair[2].replace(/\\.git$/i, "") };
+    return { owner: pair[1], repo: pair[2].replace(/\.git$/i, "") };
   }
   return null;
 }
+
 export function detectIntent(input = "") {
-  const text = String(input).trim();\n  const repository = extractGitHubRepository(text);
+  const text = String(input).trim();
+  const repository = extractGitHubRepository(text);
   if (!text) return { intent: "chat", confidence: 0.35, capabilities: ["chat"], signals: [], repository: null };
 
   let best = { intent: "chat", score: 0, signals: [] };
@@ -41,7 +43,16 @@ export function detectIntent(input = "") {
     if (score > best.score) best = { intent: rule.intent, score, signals };
   }
 
-  if (repository) {\n    best = { intent: "github_repository", score: Math.max(best.score, 2), signals: [...best.signals, "github_repository_entity"], repository };\n  }\n\n  const confidence = best.intent === "chat"
+  if (repository) {
+    best = {
+      intent: "github_repository",
+      score: Math.max(best.score, 2),
+      signals: [...best.signals, "github_repository_entity"],
+      repository
+    };
+  }
+
+  const confidence = best.intent === "chat"
     ? 0.35
     : Math.min(0.98, 0.55 + best.score * 0.12);
 
@@ -49,7 +60,8 @@ export function detectIntent(input = "") {
     intent: best.intent,
     confidence,
     capabilities: CAPABILITY_BY_INTENT[best.intent] || ["chat"],
-    signals: best.signals
+    signals: best.signals,
+    repository: repository || null
   };
 }
 
