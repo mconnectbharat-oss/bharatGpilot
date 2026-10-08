@@ -197,6 +197,30 @@ app.post("/api/pilot/chat", async (req, res) => {
 
     const latestUserMessage = [...cleanMessages].reverse().find((message) => message.role === "user");
     const intent = detectIntent(latestUserMessage?.content || "");
+
+    if (intent.repository) {
+      try {
+        const intelligence = await buildGitHubIntelligence(
+          `${intent.repository.owner}/${intent.repository.repo}`,
+          latestUserMessage?.content || ""
+        );
+        return res.json({
+          provider: "github-intelligence",
+          model: null,
+          answer: intelligence.response?.answer || intelligence.brief,
+          routing: { attempts: 0, fallbackUsed: false, latencyMs: 0 },
+          intent,
+          github: {
+            repository: intelligence.repository,
+            evidence: intelligence.brief.evidenceSummary,
+            sources: intelligence.sources,
+            coverage: intelligence.brief.coverage
+          }
+        });
+      } catch (error) {
+        console.warn("GitHub intelligence fallback:", error.message);
+      }
+    }
     const hasSystemMessage = cleanMessages.some((message) => message.role === "system");
     const enrichedMessages = hasSystemMessage
       ? cleanMessages
