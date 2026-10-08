@@ -23,5 +23,11 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@vercel/node": {
+      "path-to-regexp": "6.3.0",
+      "undici": "6.29.0"
+    }
   }
 }
