@@ -1,98 +1,18 @@
 import crypto from "node:crypto";
-
+import { query } from "../services/db.js";
 const SESSION_TTL_SECONDS = Number(process.env.AUTH_SESSION_TTL_SECONDS || 604800);
-const users = new Map();
-const sessions = new Map();
-
-function requireSecret() {
-  const secret = process.env.AUTH_SESSION_SECRET;
-  if (!secret || secret.length < 32) throw new Error("AUTH_SESSION_SECRET must be set to at least 32 characters.");
-  return secret;
-}
-
+const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "bgp_session";
 function normalizeEmail(email) { return String(email || "").trim().toLowerCase(); }
-
-function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  const derived = crypto.scryptSync(password, salt, 64);
-  return { salt, hash: derived.toString("hex") };
-}
-
-function verifyPassword(password, salt, expectedHash) {
-  const actual = crypto.scryptSync(password, salt, 64);
-  const expected = Buffer.from(expectedHash, "hex");
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
-}
-
-function sign(value) {
-  return crypto.createHmac("sha256", requireSecret()).update(value).digest("base64url");
-}
-
-function issueSession(userId) {
-  const tokenId = crypto.randomBytes(24).toString("base64url");
-  const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
-  const payload = [tokenId, userId, expiresAt].join(".");
-  const token = payload + "." + sign(payload);
-  sessions.set(tokenId, { userId, expiresAt });
-  return { token, expiresAt };
-}
-
-function readSession(token) {
-  const parts = String(token || "").split(".");
-  if (parts.length !== 4) return null;
-  const [tokenId, userId, expiresAtText, signature] = parts;
-  const payload = [tokenId, userId, expiresAtText].join(".");
-  const expected = sign(payload);
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  const expiresAt = Number(expiresAtText);
-  if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) {
-    sessions.delete(tokenId);
-    return null;
-  }
-  const session = sessions.get(tokenId);
-  const user = users.get(userId);
-  if (!session || session.userId !== userId || session.expiresAt !== expiresAt || !user) return null;
-  return { id: user.id, email: user.email };
-}
-
-export function registerUser({ email, password }) {
-  requireSecret();
-  const normalizedEmail = normalizeEmail(email);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new Error("A valid email address is required.");
-  if (typeof password !== "string" || password.length < 12) throw new Error("Password must be at least 12 characters.");
-  if (users.has(normalizedEmail)) throw new Error("An account already exists.");
-  const { salt, hash } = hashPassword(password);
-  const user = { id: crypto.randomUUID(), email: normalizedEmail, salt, passwordHash: hash };
-  users.set(user.id, user);
-  users.set(normalizedEmail, user);
-  return { id: user.id, email: user.email, ...issueSession(user.id) };
-}
-
-export function loginUser({ email, password }) {
-  requireSecret();
-  const user = users.get(normalizeEmail(email));
-  if (!user || typeof password !== "string" || !verifyPassword(password, user.salt, user.passwordHash)) {
-    throw new Error("Invalid email or password.");
-  }
-  return { id: user.id, email: user.email, ...issueSession(user.id) };
-}
-
-export function authenticateRequest(req) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  return token ? readSession(token) : null;
-}
-
-export function logoutRequest(req) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (token) sessions.delete(token.split(".")[0]);
-}
-
-export function requireAuth(req, res, next) {
-  const user = authenticateRequest(req);
-  if (!user) return res.status(401).json({ error: "Authentication required." });
-  req.user = user;
-  next();
-}
+function assertCredentials(email,password){ const e=normalizeEmail(email); if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)) throw new Error("A valid email address is required."); if(typeof password!=="string"||password.length<12||password.length>256) throw new Error("Password must be 12–256 characters."); return e; }
+function hashPassword(password,salt=crypto.randomBytes(16).toString("hex")){ return {salt,hash:crypto.scryptSync(password,salt,64).toString("hex")}; }
+function verifyPassword(password,salt,expectedHash){ const actual=crypto.scryptSync(password,salt,64), expected=Buffer.from(expectedHash,"hex"); return actual.length===expected.length&&crypto.timingSafeEqual(actual,expected); }
+function hashSessionToken(token){ return crypto.createHash("sha256").update(token).digest("hex"); }
+function issueSession(userId){ const token=crypto.randomBytes(32).toString("base64url"); const expiresAt=new Date(Date.now()+SESSION_TTL_SECONDS*1000); return {token,expiresAt,userId}; }
+function setSessionCookie(res,token,expiresAt){ const secure=process.env.NODE_ENV==="production"?"; Secure":""; const maxAge=Math.max(0,Math.floor((expiresAt.getTime()-Date.now())/1000)); res.setHeader("Set-Cookie",COOKIE_NAME+"="+token+"; Path=/; HttpOnly; SameSite=Lax"+secure+"; Max-Age="+maxAge); }
+function clearSessionCookie(res){ const secure=process.env.NODE_ENV==="production"?"; Secure":""; res.setHeader("Set-Cookie",COOKIE_NAME+"=; Path=/; HttpOnly; SameSite=Lax"+secure+"; Max-Age=0"); }
+function readCookie(req){ for(const part of String(req.headers.cookie||"").split(";")){ const [key,...rest]=part.trim().split("="); if(key===COOKIE_NAME) return rest.join("="); } return null; }
+export async function registerUser({email,password},res){ const e=assertCredentials(email,password); const {salt,hash}=hashPassword(password); try{ const result=await query("INSERT INTO users (email,password_hash,password_salt) VALUES ($1,$2,$3) RETURNING id,email,created_at",[e,hash,salt]); const s=issueSession(result.rows[0].id); await query("INSERT INTO sessions (user_id,token_hash,expires_at) VALUES ($1,$2,$3)",[s.userId,hashSessionToken(s.token),s.expiresAt]); setSessionCookie(res,s.token,s.expiresAt); return {user:result.rows[0]}; }catch(error){ if(error.code==="23505") throw new Error("An account already exists."); throw error; } }
+export async function loginUser({email,password},res){ const e=assertCredentials(email,password); const result=await query("SELECT id,email,password_hash,password_salt FROM users WHERE email=$1",[e]); const user=result.rows[0]; if(!user||!verifyPassword(password,user.password_salt,user.password_hash)) throw new Error("Invalid email or password."); const s=issueSession(user.id); await query("INSERT INTO sessions (user_id,token_hash,expires_at) VALUES ($1,$2,$3)",[user.id,hashSessionToken(s.token),s.expiresAt]); setSessionCookie(res,s.token,s.expiresAt); return {user:{id:user.id,email:user.email}}; }
+export async function authenticateRequest(req){ const token=readCookie(req); if(!token)return null; const tokenHash=hashSessionToken(token); const result=await query("SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()",[tokenHash]); const user=result.rows[0]; if(!user)return null; await query("UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1",[tokenHash]); return user; }
+export async function logoutRequest(req,res){ const token=readCookie(req); if(token) await query("DELETE FROM sessions WHERE token_hash=$1",[hashSessionToken(token)]); clearSessionCookie(res); }
+export async function requireAuth(req,res,next){ try{ const user=await authenticateRequest(req); if(!user)return res.status(401).json({error:"Authentication required."}); req.user=user; next(); }catch(error){ console.error("Auth error:",error.message); res.status(503).json({error:"Authentication service unavailable."}); } }
