@@ -9,6 +9,7 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "src/contracts/**/*.ts"
+    "src/contracts/**/*.ts",
+    "src/services/**/*.ts"
   ]
 }
