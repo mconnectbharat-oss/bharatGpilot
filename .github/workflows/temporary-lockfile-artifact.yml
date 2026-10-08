@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: lockfile-artifact-\${{ github.ref }}
+  group: lockfile-artifact-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
