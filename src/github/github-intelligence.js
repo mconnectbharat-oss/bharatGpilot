@@ -7,9 +7,7 @@ export async function buildGitHubIntelligence(repository, question = "") {
   const inspection = await inspectRepository(`${ref.owner}/${ref.repo}`);
   const analysis = analyzeRepositorySignals(inspection);
   const brief = buildRepositoryBrief(inspection, analysis);
-  const response = question
-    ? answerRepositoryQuestion(question, brief)
-    : null;
+  const response = question ? answerRepositoryQuestion(question, brief) : null;
 
   return {
     repository: brief.repository,
