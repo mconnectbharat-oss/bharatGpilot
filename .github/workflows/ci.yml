@@ -38,6 +38,9 @@ jobs:
       - name: Run test suite
         run: npm test
 
+      - name: Type-check TypeScript contracts
+        run: npm run typecheck
+
   security-gate:
     name: Security gate
     if: ${{ always() }}
