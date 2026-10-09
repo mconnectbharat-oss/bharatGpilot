@@ -5,7 +5,7 @@ on:
     branches: [main]
   merge_group:
   push:
-    branches: [main, feat/agent-memory-n8n-foundation]
+    branches: [main, feat/agent-memory-n8n-foundation, feat/rag-security-db-validation]
   workflow_dispatch:
 
 permissions:
@@ -42,16 +42,81 @@ jobs:
       - name: Type-check TypeScript contracts and provider services
         run: npm run typecheck
 
+  dependency-audit:
+    name: Dependency security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies without lifecycle scripts
+        run: npm install --ignore-scripts
+
+      - name: Audit the resolved dependency tree
+        run: npm audit --no-package-lock --audit-level=high
+
+  migration-test:
+    name: Disposable PostgreSQL migration test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bharatgpilot_test
+      DATABASE_SSL: "false"
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bharatgpilot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bharatgpilot_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies without lifecycle scripts
+        run: npm install --ignore-scripts
+
+      - name: Apply migrations to the disposable database
+        run: |
+          npm run db:migrate
+          npm run db:migrate
+
+      - name: Verify knowledge schema, search and user isolation
+        run: npm run test:migrations
+
   security-gate:
     name: Security gate
     if: ${{ always() }}
-    needs: [test]
+    needs: [test, dependency-audit, migration-test]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every CI matrix job to pass
+      - name: Require tests, dependency audit and migration checks to pass
         env:
           TEST_RESULT: ${{ needs.test.result }}
+          AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+          MIGRATION_RESULT: ${{ needs.migration-test.result }}
         run: |
           test "$TEST_RESULT" = "success"
-          echo "All required BharatGPilot CI matrix checks passed."
+          test "$AUDIT_RESULT" = "success"
+          test "$MIGRATION_RESULT" = "success"
+          echo "Tests, dependency audit and disposable database migration checks passed."
