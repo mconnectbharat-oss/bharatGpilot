@@ -39,6 +39,14 @@ class IndicRouterTests(unittest.TestCase):
         self.assertEqual(package["language_code"], "hi")
         self.assertIn("untrusted data", package["system_instruction"])
 
+    def test_bengali_and_tamil_profiles_are_concise_and_keep_safety_rules(self):
+        for code, script in (("bn", "বাংলা"), ("ta", "தமிழ்")):
+            with self.subTest(code=code):
+                package = self.router.generate_localized_runtime_package("sample", code)
+                self.assertIn(script, package["system_instruction"])
+                self.assertIn("untrusted data", package["system_instruction"])
+                self.assertIn("uncertainty", package["system_instruction"])
+                self.assertEqual(package["language_code"], code)
     def test_fallback_is_opt_in_and_language_specific(self):
         env = {
             "BGP_MODEL_NATIVE_INDIC": "primary/native-chat",
