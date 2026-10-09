@@ -3,7 +3,7 @@
   "name": "BharatGPilot — AI Copilot",
   "version": "0.1.0",
   "description": "Your evidence-first AI copilot in the browser.",
-  "permissions": ["sidePanel", "storage", "activeTab"],
+  "permissions": ["sidePanel", "storage", "activeTab", "contextMenus", "scripting"],
   "host_permissions": ["https://bharatgpilot.com/*"],
   "background": {
     "service_worker": "background.js",
