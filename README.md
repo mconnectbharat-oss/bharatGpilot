@@ -306,6 +306,35 @@ Future improvements may include:
 
 ---
 
+## 📚 Private Knowledge Library (RAG foundation)
+
+BharatGPilot includes an authenticated, per-user text knowledge library. It splits submitted text into bounded overlapping chunks, stores them in PostgreSQL, and retrieves relevant chunks with PostgreSQL full-text search. Retrieved excerpts can be added to chat context with source markers such as `[K1]`.
+
+This is a low-cost lexical RAG foundation; it does **not** claim to use vector embeddings or semantic similarity. Embedding-based retrieval, PDF parsing, and image extraction remain separate future milestones.
+
+### Database setup
+
+After configuring `DATABASE_URL`, apply pending SQL migrations:
+
+```bash
+npm run db:migrate
+```
+
+Do not run migrations against production until the target database and backup/recovery plan have been verified.
+
+### Knowledge API
+
+All knowledge-library endpoints require an authenticated session.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/pilot/knowledge` | List the signed-in user's documents |
+| `POST` | `/api/pilot/knowledge` | Save a text document (`title`, `content`, optional `sourceName`) |
+| `POST` | `/api/pilot/knowledge/search` | Search saved content (`query`, optional `limit`) |
+| `DELETE` | `/api/pilot/knowledge/:id` | Delete one of the signed-in user's documents |
+
+Each document is limited to 100,000 characters and chunking is bounded. Database queries scope documents to the authenticated user. Retrieved document text is treated as untrusted reference material, not executable instructions. Chat responses expose retrieval status and source metadata; users should still verify important claims against the cited source text.
+
 ## 🗺️ Development Roadmap
 
 ### Phase 1 — Core AI assistant
