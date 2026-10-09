@@ -28,7 +28,7 @@ class FuzzyScriptEngineTests(unittest.TestCase):
 
     def test_ambiguous_candidate_is_left_unchanged(self):
         engine = FuzzyScriptEngine(priority_corpus=["करना", "करनी"])
-        self.assertEqual(engine.resolve_dynamic_typo("करना"), "करना")
+        self.assertEqual(engine.resolve_dynamic_typo("करन"), "करन")
 
 
 class IndicSpellPreProcessorTests(unittest.TestCase):
