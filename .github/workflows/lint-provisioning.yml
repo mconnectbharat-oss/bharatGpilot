@@ -8,6 +8,9 @@ on:
       - "grafana/dashboards/**"
       - "docker-compose.yml"
       - "prometheus.yml"
+      - "docs/tenant-onboarding/**"
+      - "docs/architecture/**"
+      - "research-service/scripts/seed_mongo_staging.py"
       - ".github/workflows/lint-provisioning.yml"
 
 permissions:
@@ -26,7 +29,7 @@ jobs:
           python-version: "3.12"
       - name: Install YAML linter
         run: |
-          python -m pip install --disable-pip-version-check yamllint
+          python -m pip install --disable-pip-version-check yamllint jsonschema
       - name: Lint provisioning and Compose YAML
         run: |
           yamllint -d '{extends: relaxed, rules: {line-length: disable, truthy: {allowed-values: ["true", "false", "on", "off"]}}}' grafana/provisioning docker-compose.yml prometheus.yml
@@ -38,3 +41,19 @@ jobs:
           MONGODB_ATLAS_URI: mongodb://validation:validation@localhost:27017/test
           MONGODB_BACKUP_URI: mongodb://validation:validation@localhost:27017/test
         run: docker compose --profile backup config --quiet
+
+      - name: Validate tenant onboarding profile against its JSON Schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import FormatChecker, validate
+
+          root = Path("docs/tenant-onboarding")
+          schema = json.loads((root / "workspace-node-profile.schema.json").read_text(encoding="utf-8"))
+          profile = json.loads((root / "workspace-node-profile.json").read_text(encoding="utf-8"))
+          validate(instance=profile, schema=schema, format_checker=FormatChecker())
+          print("Tenant workspace profile matches JSON Schema.")
+          PY
+      - name: Check staging seeder Python syntax
+        run: python -m py_compile research-service/scripts/seed_mongo_staging.py
