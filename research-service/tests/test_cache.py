@@ -44,6 +44,12 @@ class ResponseCacheTests(unittest.IsolatedAsyncioTestCase):
         await cache.set_response_cache("tenant-a", "model-a", "same prompt", {"content": "private"})
         self.assertIsNone(await cache.get_cached_response("tenant-b", "model-a", "same prompt"))
 
+    async def test_key_normalizes_whitespace_without_exposing_prompt(self):
+        first = ResponseCacheService._generate_cache_key("u", "m", "hello   world")
+        second = ResponseCacheService._generate_cache_key("u", "m", "hello\\nworld")
+        self.assertEqual(first, second)
+        self.assertNotIn("hello", first)
+
     async def test_model_and_system_instruction_are_part_of_key(self):
         key = ResponseCacheService._generate_cache_key("u", "m1", "prompt", "policy")
         self.assertNotEqual(key, ResponseCacheService._generate_cache_key("u", "m2", "prompt", "policy"))
