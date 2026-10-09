@@ -29,7 +29,7 @@ jobs:
           python -m pip install --disable-pip-version-check yamllint
       - name: Lint provisioning and Compose YAML
         run: |
-          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: {allowed-values: [true, false, on, off]}}}" grafana/provisioning docker-compose.yml prometheus.yml
+          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: {allowed-values: ["true", "false", "on", "off"]}}}" grafana/provisioning docker-compose.yml prometheus.yml
       - name: Validate Docker Compose model
         env:
           BGP_RESEARCH_API_TOKEN: validation-only-not-a-real-secret
