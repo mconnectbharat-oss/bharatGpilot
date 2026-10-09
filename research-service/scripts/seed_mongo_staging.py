@@ -11,7 +11,7 @@ import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 
-from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, IndexModel
 from pymongo.errors import DuplicateKeyError
 
 
@@ -46,9 +46,9 @@ async def seed() -> None:
             raise RuntimeError("Refusing to seed: audit_trails exists but is not capped.")
 
         await collection.create_indexes([
-            [("timestamp", DESCENDING)],
-            [("client_ip", ASCENDING), ("timestamp", DESCENDING)],
-            [("infraction_type", ASCENDING), ("timestamp", DESCENDING)],
+            IndexModel([("timestamp", DESCENDING)], name="audit_timestamp_desc"),
+            IndexModel([("client_ip", ASCENDING), ("timestamp", DESCENDING)], name="audit_ip_timestamp"),
+            IndexModel([("infraction_type", ASCENDING), ("timestamp", DESCENDING)], name="audit_type_timestamp"),
         ])
 
         now = datetime.now(timezone.utc)
