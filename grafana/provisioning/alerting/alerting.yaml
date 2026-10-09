@@ -7,10 +7,9 @@ contactPoints:
     name: bharatgpilot-operations
     receivers:
       - uid: bgp-operations-webhook
-        type: webhook
+        type: discord
         settings:
           url: $DISCORD_MONITOR_WEBHOOK_URL
-          httpMethod: POST
         disableResolveMessage: false
 
 policies:
