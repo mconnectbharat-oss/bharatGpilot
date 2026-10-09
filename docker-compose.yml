@@ -102,6 +102,7 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/security_alerts.yml:/etc/prometheus/security_alerts.yml:ro
       - prometheus_metrics:/prometheus
     networks:
       - monitoring
