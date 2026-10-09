@@ -12,6 +12,12 @@
 
 .auth{border:1px solid var(--border);background:#111827;color:#e8edf5;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:800}.auth:hover{border-color:var(--orange)}
 .modal{position:fixed;inset:0;background:#02050bcc;display:none;place-items:center;z-index:50;padding:18px}.modal.open{display:grid}.auth-card{width:min(420px,100%);background:#0b111c;border:1px solid var(--orange);border-radius:16px;padding:20px;box-shadow:0 20px 70px #0009}.auth-card h2{margin:0 0 6px}.auth-card p{color:var(--muted);font-size:11px;line-height:1.5}.auth-form{display:grid;gap:9px;margin-top:14px}.auth-form label{font-size:10px;color:#8b98ad;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.auth-form input{width:100%;padding:11px;border:1px solid var(--border);background:#080c14;color:var(--text);border-radius:9px;outline:0}.auth-form input:focus{border-color:var(--orange)}.auth-actions{display:flex;gap:8px;margin-top:4px}.auth-primary{flex:1;border:0;border-radius:9px;padding:11px;background:var(--orange);color:#fff;font-weight:900}.auth-secondary{border:1px solid var(--border);background:#111827;color:#cbd5e1;border-radius:9px;padding:11px}.auth-msg{min-height:16px;color:#ff9b79;font-size:10px}.user-chip{display:none;color:#b9c5d6;font-size:10px}.user-chip.show{display:inline}
+
+.voice{height:34px;min-width:38px;border:1px solid var(--border);border-radius:9px;background:#111827;color:var(--text);font-size:16px}
+.voice[aria-pressed="true"]{border-color:var(--green);background:#10251b}
+#voice-language{max-width:100px;border:1px solid var(--border);border-radius:8px;background:#0c111d;color:var(--text);padding:7px 3px;font-size:10px}
+.voice-status{min-height:14px;margin:7px 4px 0;color:var(--muted);font-size:10px;line-height:1.4}
+@media(max-width:460px){#voice-language{max-width:76px;font-size:9px}.voice{min-width:32px}}
 </style></head>
 <body><div class="app">
 <header class="top"><div class="brand"><button class="menu" id="menu">☰</button><div class="mark"><i>✦</i></div><span>Bharat<b>G</b>pilot</span><span class="pill">AI COPILOT</span></div><div class="live"><span class="dot"></span><span class="pill" id="status">Ready</span><span class="user-chip" id="user-chip"></span><button class="auth" id="github-button" style="display:none">Connect GitHub</button><button class="auth" id="auth-button">Sign in</button><span class="pill">IN</span></div></header>
@@ -21,7 +27,7 @@
 <section class="hero"><div class="eyebrow">Open-source intelligence cockpit</div><h1>Good morning, Explorer</h1><p>Where shall we route today? BharatGPilot can inspect GitHub repositories, separate evidence from inference, and help you decide what to do next.</p></section>
 <section class="workspace-card">
 <div class="greeting"><div class="robot">🤖</div><div><h3>Your open-source copilot</h3><p>EVIDENCE-FIRST ROUTING</p></div></div>
-<div class="prompt"><input id="prompt" placeholder="Ask anything — e.g. What does facebook/react do?"><button class="send" id="send">↑</button></div>
+<div class="prompt"><input id="prompt" placeholder="Ask anything — e.g. What does facebook/react do?"><select id="voice-language" aria-label="Voice typing language" title="Voice typing language"><option value="en-IN">English</option><option value="hi-IN">हिन्दी</option><option value="bn-IN">বাংলা</option><option value="ta-IN">தமிழ்</option><option value="mr-IN">मराठी</option></select><button class="voice" id="voice-button" type="button" aria-pressed="false" title="Start voice typing">🎙</button><button class="send" id="send" title="Send message">↑</button></div><div id="voice-status" class="voice-status" role="status" aria-live="polite">Voice typing: ready. Tap the microphone, speak, then say “send message”.</div>
 <div class="context-list">
 <button class="context" data-prompt="What does facebook/react do?"><b>📐 Explain a GitHub repository</b><span>→</span></button>
 <button class="context" data-prompt="Check the health of mconnectbharat-oss/bharatGpilot"><b>⛽ Check repository health</b><span>→</span></button>
@@ -114,5 +120,50 @@ $("#knowledge-search-button").onclick=async()=>{
 $("#vault-tab").onclick=()=>$("#knowledge-panel").scrollIntoView({behavior:"smooth",block:"start"});
 $("#vault-tab").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#knowledge-panel").scrollIntoView({behavior:"smooth",block:"start"});}};
 $("#send").onclick=run;$("#prompt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();run();}});
+const voiceButton=$("#voice-button"),voiceStatus=$("#voice-status"),voiceLanguage=$("#voice-language"),voiceInput=$("#prompt");
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+let voiceRecognition=null,voiceListening=false;
+function setVoiceStatus(message){voiceStatus.textContent=message;}
+if(!SpeechRecognition){
+  voiceButton.disabled=true;
+  voiceButton.title="Speech recognition is not supported in this browser";
+  setVoiceStatus("Voice typing is not supported by this browser. Try the latest Chrome on your computer.");
+}else{
+  voiceRecognition=new SpeechRecognition();
+  voiceRecognition.continuous=true;
+  voiceRecognition.interimResults=false;
+  voiceRecognition.onstart=()=>{voiceListening=true;voiceButton.setAttribute("aria-pressed","true");voiceButton.title="Stop voice typing";setVoiceStatus("Listening in "+voiceLanguage.options[voiceLanguage.selectedIndex].text+". Speak naturally; say “send message” to submit.");};
+  voiceRecognition.onresult=(event)=>{
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      if(!event.results[i].isFinal)continue;
+      const spoken=event.results[i][0].transcript.trim();
+      if(!spoken)continue;
+      const command=spoken.toLowerCase().replace(/[.!?]+$/,"").trim();
+      if(command==="stop listening"||command==="stop voice typing"){
+        voiceRecognition.stop();setVoiceStatus("Voice typing stopped.");return;
+      }
+      if(command==="send message"||command==="submit message"||command==="send it"){
+        const message=voiceInput.value.trim();
+        if(!message){setVoiceStatus("Nothing to send yet. Speak your message first.");continue;}
+        voiceRecognition.stop();setVoiceStatus("Sending your message…");run();return;
+      }
+      voiceInput.value=(voiceInput.value.trim()?voiceInput.value.trim()+" ":"")+spoken;
+      voiceInput.dispatchEvent(new Event("input",{bubbles:true}));
+      setVoiceStatus("Added speech to the message. Say “send message” to submit, or “stop listening” to stop.");
+    }
+  };
+  voiceRecognition.onerror=(event)=>{
+    const messages={not-allowed:"Microphone permission was denied. Allow microphone access in your browser settings.", "service-not-allowed":"Speech recognition is blocked by the browser.", "no-speech":"No speech was detected. Tap the microphone to try again.", network:"Speech recognition needs a working network connection."};
+    setVoiceStatus(messages[event.error]||("Voice typing error: "+event.error+"."));
+  };
+  voiceRecognition.onend=()=>{voiceListening=false;voiceButton.setAttribute("aria-pressed","false");voiceButton.title="Start voice typing";if(voiceStatus.textContent.startsWith("Listening"))setVoiceStatus("Voice typing stopped. Tap the microphone to start again.");};
+  voiceButton.addEventListener("click",()=>{
+    if(voiceListening){voiceRecognition.stop();setVoiceStatus("Stopping voice typing…");return;}
+    voiceRecognition.lang=voiceLanguage.value;
+    try{voiceRecognition.start();setVoiceStatus("Requesting microphone access…");}
+    catch(error){setVoiceStatus("Could not start voice typing. Wait a moment and try again.");}
+  });
+  voiceLanguage.addEventListener("change",()=>{if(voiceListening){voiceRecognition.stop();setVoiceStatus("Language changed. Tap the microphone to resume.");}});
+}
 refreshIdentity();
 </script></body></html>
