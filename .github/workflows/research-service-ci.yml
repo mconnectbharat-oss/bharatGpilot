@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feat/browser-extension-sidepanel]
+    branches: [main, feat/browser-extension-sidepanel, feat/session-rotation-rag-scale-readiness]
   workflow_dispatch:
 
 permissions:
