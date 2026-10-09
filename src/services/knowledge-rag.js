@@ -2,22 +2,30 @@ import crypto from "node:crypto";
 import { getDb, query } from "./db.js";
 
 const MAX_DOCUMENT_CHARS = 100000;
-const MAX_CHUNKS = 100;
+const MAX_CHUNKS = 160;
 const DEFAULT_CHUNK_SIZE = 1200;
 const DEFAULT_OVERLAP = 150;
 
+export class KnowledgeInputError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "KnowledgeInputError";
+    this.code = "BGP_KNOWLEDGE_INPUT";
+  }
+}
+
 export function chunkText(input, { chunkSize = DEFAULT_CHUNK_SIZE, overlap = DEFAULT_OVERLAP } = {}) {
   if (typeof input !== "string" || !input.trim()) {
-    throw new Error("Knowledge content must contain text.");
+    throw new KnowledgeInputError("Knowledge content must contain text.");
   }
   if (input.length > MAX_DOCUMENT_CHARS) {
-    throw new Error("Knowledge content cannot exceed 100000 characters.");
+    throw new KnowledgeInputError("Knowledge content cannot exceed 100000 characters.");
   }
   if (!Number.isInteger(chunkSize) || chunkSize < 100 || chunkSize > 2400) {
-    throw new Error("Chunk size must be between 100 and 2400 characters.");
+    throw new KnowledgeInputError("Chunk size must be between 100 and 2400 characters.");
   }
   if (!Number.isInteger(overlap) || overlap < 0 || overlap >= chunkSize) {
-    throw new Error("Chunk overlap must be smaller than chunk size.");
+    throw new KnowledgeInputError("Chunk overlap must be smaller than chunk size.");
   }
 
   const chars = Array.from(input.replace(/\r\n?/g, "\n").trim());
@@ -42,23 +50,23 @@ export function chunkText(input, { chunkSize = DEFAULT_CHUNK_SIZE, overlap = DEF
     start = Math.max(start + 1, end - overlap);
   }
 
-  if (!chunks.length) throw new Error("Knowledge content did not produce any searchable chunks.");
-  if (chunks.length > MAX_CHUNKS) throw new Error("Knowledge content produced too many chunks.");
+  if (!chunks.length) throw new KnowledgeInputError("Knowledge content did not produce any searchable chunks.");
+  if (chunks.length > MAX_CHUNKS) throw new KnowledgeInputError("Knowledge content produced too many chunks.");
   return chunks;
 }
 
 function validateTitle(title) {
   if (typeof title !== "string" || !title.trim() || title.trim().length > 200) {
-    throw new Error("Document title must contain 1–200 characters.");
+    throw new KnowledgeInputError("Document title must contain 1–200 characters.");
   }
   return title.trim();
 }
 
 export async function addKnowledgeDocument(userId, { title, content, sourceName = "" } = {}) {
-  if (!userId) throw new Error("An authenticated user is required.");
+  if (!userId) throw new KnowledgeInputError("An authenticated user is required.");
   const cleanTitle = validateTitle(title);
   if (typeof sourceName !== "string" || sourceName.length > 300) {
-    throw new Error("Source name must be at most 300 characters.");
+    throw new KnowledgeInputError("Source name must be at most 300 characters.");
   }
   const chunks = chunkText(content);
   const cleanContent = content.trim();
