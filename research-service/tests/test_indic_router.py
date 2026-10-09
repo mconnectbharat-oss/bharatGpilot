@@ -47,6 +47,16 @@ class IndicRouterTests(unittest.TestCase):
                 self.assertIn("untrusted data", package["system_instruction"])
                 self.assertIn("uncertainty", package["system_instruction"])
                 self.assertEqual(package["language_code"], code)
+    def test_indian_english_profile_includes_currency_and_ist_conventions(self):
+        package = self.router.generate_localized_runtime_package("GST deadline", "en-in")
+        instruction = package["system_instruction"]
+        self.assertIn("₹1,00,000", instruction)
+        self.assertIn("lakh/crore", instruction)
+        self.assertIn("Asia/Kolkata (IST)", instruction)
+        self.assertIn("Do not assume a deadline", instruction)
+        self.assertIn("untrusted data", instruction)
+
+
     def test_fallback_is_opt_in_and_language_specific(self):
         env = {
             "BGP_MODEL_NATIVE_INDIC": "primary/native-chat",
