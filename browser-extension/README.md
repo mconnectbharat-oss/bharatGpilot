@@ -12,16 +12,22 @@ npm install
 npm run build
 ```
 
-The extension build is written to `browser-extension/dist`. To load it in Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select the `dist` folder after building. Copy `manifest.json` and `background.js` into `dist` as part of packaging if your build process does not copy them; Vite does not copy these root files automatically by default.
+Vite writes the unpacked extension to `browser-extension/dist`; the `public/manifest.json` and `public/background.js` assets are copied into that output automatically. To load it in Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select the `dist` folder after building.
 
 ## API
 
-By default the frontend calls `https://bharatgpilot.com/api/pilot/stream` and `/api/pilot/chat`. Configure `VITE_BGP_API_BASE` at build time if the deployed API origin differs. The API must permit the extension origin in its CORS policy.
+The frontend calls `/api/pilot/stream` at the configured API origin. The default is `https://bharatgpilot.com`. Configure `VITE_BGP_API_BASE` at build time if the deployed API origin differs. The API must permit the extension origin in its CORS policy and return a stream format understood by the client.
 
-## Security notes
+## Session and credits
 
-- No API provider secret is embedded in the extension.
-- A session token is read from extension storage, not page localStorage.
-- Generated HTML previews run in a sandboxed iframe with scripts enabled but without same-origin access.
-- The credit count is explicitly marked as a local demo balance until a documented authenticated credits endpoint is available.
-- The UI does not claim translation, page summarization, or account credit sync succeeded unless the supporting API is available.
+The frontend looks for `bgp_token` in `chrome.storage.local`. This project does not yet include an extension sign-in screen or token exchange flow; a session token must be provisioned by a supported authentication flow. No API provider secret is embedded in the extension.
+
+The credit count is a clearly marked local demo balance, not a real account balance. A documented authenticated credits endpoint is needed before it can display live account usage.
+
+## Artifacts and page actions
+
+Generated HTML previews run in a sandboxed iframe with scripts enabled but without same-origin access. Translate and TL;DR buttons prepare prompts that ask the user to paste page text; they do not silently read webpage contents.
+
+## Limitations
+
+This is an initial frontend scaffold, not a verified production release. Build and browser testing must pass before distribution. The API must support CORS for the extension origin, and stream framing should be confirmed against the deployed backend.
