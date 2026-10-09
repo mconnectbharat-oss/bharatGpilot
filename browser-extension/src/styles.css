@@ -18,3 +18,12 @@ button:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2p
 ::-webkit-scrollbar { width: 7px; }
 ::-webkit-scrollbar-thumb { background: #29364b; border-radius: 10px; }
 .artifact-frame { width: 100%; min-height: 240px; flex: 1; border: 0; background: white; }
+
+/* Animated entry for the isolated artifact preview layer. */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
