@@ -11,6 +11,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from litellm import acompletion
+
+from src.services.guardrails import PromptGuardrails
+from src.services.indic_router import AdvancedIndicRouter
 
 from src.agents.research import research_agent
 from fastapi import File, Form, UploadFile
@@ -46,6 +50,14 @@ class ResearchRequest(BaseModel):
     prompt: str = Field(min_length=3, max_length=6000)
 
 
+class MultilingualChatInput(BaseModel):
+    prompt: str = Field(min_length=2, max_length=12000)
+
+
+indic_router = AdvancedIndicRouter()
+prompt_guardrails = PromptGuardrails()
+
+
 async def require_research_token(authorization: str | None = Header(default=None)) -> None:
     expected = os.getenv("BGP_RESEARCH_API_TOKEN", "")
     if not expected:
@@ -56,6 +68,50 @@ async def require_research_token(authorization: str | None = Header(default=None
     if not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Authentication required.")
 
+
+
+@app.post("/api/v1/chat/multilingual-stream", dependencies=[Depends(require_research_token)])
+async def execute_multilingual_stream(payload: MultilingualChatInput) -> StreamingResponse:
+    """Internal streaming chat route with language policy selection.
+
+    Keep this sidecar behind the trusted API gateway; do not expose its shared
+    service token or call it directly from the browser extension.
+    """
+    prompt = prompt_guardrails.validate_and_sanitize_prompt("service-request", payload.prompt)
+    language = indic_router.determine_priority_language(prompt)
+    runtime = indic_router.generate_localized_runtime_package(prompt, language)
+
+    async def event_generator() -> AsyncIterator[str]:
+        try:
+            stream = await acompletion(
+                model=runtime["model"],
+                messages=[
+                    {"role": "system", "content": runtime["system_instruction"]},
+                    {"role": "user", "content": prompt},
+                ],
+                stream=True,
+                timeout=float(os.getenv("BGP_CHAT_TIMEOUT_SECONDS", "60")),
+            )
+            yield f"data: {json.dumps({'language': language, 'model': runtime['model']})}\\n\\n"
+            async for chunk in stream:
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                text = getattr(delta, "content", None) if delta is not None else None
+                if isinstance(text, str) and text:
+                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\\n\\n"
+            yield "data: [DONE]\\n\\n"
+        except Exception as exc:
+            logger.warning("Multilingual chat failed (%s)", type(exc).__name__)
+            yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\\n\\n"
+            yield "data: [DONE]\\n\\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
 
 @app.get("/health")
 async def health() -> dict[str, str]:
