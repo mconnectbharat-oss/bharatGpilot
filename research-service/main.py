@@ -40,12 +40,12 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
-health_worker = MongoSelfHealingWorker(telemetry_bridge)
+health_worker: MongoSelfHealingWorker | None = None
 health_worker_task: asyncio.Task | None = None
 
 @app.on_event("startup")
 async def initialize_security_audit_store() -> None:
-    global health_worker_task
+    global health_worker_task, health_worker
     if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true" and not audit_store.enabled:
         raise RuntimeError("MONGODB_AUDIT_REQUIRED is true but MONGODB_ATLAS_URI is not configured.")
     try:
@@ -54,6 +54,7 @@ async def initialize_security_audit_store() -> None:
         logger.error("MongoDB audit initialization failed (%s). Audit storage remains unavailable.", type(exc).__name__)
         if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true":
             raise
+    health_worker = MongoSelfHealingWorker(telemetry_bridge, audit_store)
     if health_worker.enabled:
         health_worker_task = asyncio.create_task(health_worker.start(), name="mongodb-health-recovery")
 
@@ -66,7 +67,8 @@ async def close_security_audit_store() -> None:
             await health_worker_task
         except asyncio.CancelledError:
             pass
-    await health_worker.stop()
+    if health_worker is not None:
+        await health_worker.stop()
     await audit_store.close()
 
 
@@ -389,6 +391,8 @@ async def execute_cached_inference(
 @app.get("/api/v1/system/db-status", dependencies=[Depends(require_research_token)])
 async def database_status() -> dict[str, object]:
     """Private health snapshot; never expose the MongoDB URI or exception details."""
+    if health_worker is None:
+        return {"configured": False, "status": "disabled", "failure_count": 0, "last_error": None}
     state = health_worker.status()
     if state["configured"] and state["status"] != "connected":
         raise HTTPException(status_code=503, detail=state)
