@@ -39,7 +39,7 @@ class ResponseCacheService:
         parameters: dict[str, Any] | None = None,
     ) -> str:
         # Preserve case and wording; normalize only whitespace and Unicode.
-        normalized_prompt = re.sub(r"\s+", " ", prompt).strip()
+        normalized_prompt = re.sub(r"\\s+", " ", unicodedata.normalize("NFC", prompt)).strip()
         material = json.dumps(
             {
                 "version": 1,
