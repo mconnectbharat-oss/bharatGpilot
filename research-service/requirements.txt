@@ -5,3 +5,6 @@ litellm>=1.50,<2.0
 firecrawl-py>=1.0,<5.0
 pydantic>=2.8,<3.0
 qdrant-client>=1.13,<2.0
+pypdf>=4.2.0,<6.0.0
+docx2txt==0.8
+langchain-text-splitters>=0.0.1,<2.0.0
