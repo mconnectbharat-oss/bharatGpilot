@@ -13,3 +13,4 @@ redis>=5.0,<7.0
 prometheus-client>=0.20,<1.0
 boto3>=1.34,<2.0
 pymongo>=4.13,<5.0
+httpx>=0.27,<1.0
