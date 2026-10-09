@@ -6,9 +6,6 @@ import logging
 import os
 from typing import Any
 
-from pymongo import AsyncMongoClient
-from pymongo.errors import PyMongoError
-
 from src.services.chat_notifier import ChatNotifierService
 
 logger = logging.getLogger(__name__)
@@ -66,16 +63,18 @@ class MongoSelfHealingWorker:
                     self._last_error = None
                     await self._emit("recovery_success", "MongoDB Atlas audit-store connection is healthy again.")
                 return True
+            self._last_error = "AuditStoreClientUnavailable"
         except Exception as exc:
             self._last_error = type(exc).__name__
-            self._failure_count += 1
-            if self._healthy or self._failure_count == 1:
-                await self._emit(
-                    "degradation_detected",
-                    "MongoDB Atlas audit-store ping failed. Attempting to establish and verify a replacement connection.",
-                )
-            self._healthy = False
             logger.warning("MongoDB health check failed (%s).", type(exc).__name__)
+
+        self._failure_count += 1
+        if self._healthy or self._failure_count == 1:
+            await self._emit(
+                "degradation_detected",
+                "MongoDB Atlas audit-store ping failed. Attempting to establish and verify a replacement connection.",
+            )
+        self._healthy = False
 
         # The audit store swaps its live client only after the replacement has
         # passed ping, collection validation, and index checks.
