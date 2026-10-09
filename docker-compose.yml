@@ -1,0 +1,101 @@
+services:
+  research-service:
+    build:
+      context: ./research-service
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      BGP_RESEARCH_API_TOKEN: ${BGP_RESEARCH_API_TOKEN:?Set BGP_RESEARCH_API_TOKEN in the environment}
+      BGP_RESEARCH_CORS_ORIGINS: ${BGP_RESEARCH_CORS_ORIGINS:-}
+      BGP_REDIS_URL: ${BGP_REDIS_URL:-}
+      BGP_RESPONSE_CACHE_ENABLED: ${BGP_RESPONSE_CACHE_ENABLED:-true}
+      BGP_RESPONSE_CACHE_TTL: ${BGP_RESPONSE_CACHE_TTL:-300}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY in the environment}
+    expose:
+      - "4000"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    networks:
+      - app-internal
+      - monitoring
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY in the environment}
+    volumes:
+      - qdrant_vault:/qdrant/storage
+    expose:
+      - "6333"
+    networks:
+      - app-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -q -O - http://127.0.0.1:6333/readyz >/dev/null"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_metrics:/prometheus
+    networks:
+      - monitoring
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set a strong GRAFANA_ADMIN_PASSWORD in the environment}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_dashboards:/var/lib/grafana
+    networks:
+      - monitoring
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  app-internal:
+    internal: true
+  monitoring:
+    internal: true
+
+volumes:
+  qdrant_vault:
+  prometheus_metrics:
+  grafana_dashboards:
