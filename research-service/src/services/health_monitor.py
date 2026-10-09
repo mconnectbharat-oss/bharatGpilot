@@ -15,12 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class MongoSelfHealingWorker:
-    def __init__(self, telemetry_bridge: Any) -> None:
+    def __init__(self, telemetry_bridge: Any, audit_store: Any) -> None:
+        self.audit_store = audit_store
         self.uri = os.getenv("MONGODB_ATLAS_URI", "").strip()
-        self.database_name = os.getenv("MONGODB_AUDIT_DATABASE", "bharatgpilot_security_vault")
         self.check_interval = max(5, int(os.getenv("MONGODB_HEALTH_CHECK_INTERVAL_SECONDS", "15")))
         self._bridge = telemetry_bridge
-        self._client: AsyncMongoClient | None = None
         self._healthy = False
         self._running = False
         self._task: asyncio.Task | None = None
@@ -55,65 +54,41 @@ class MongoSelfHealingWorker:
             "MongoDB-Atlas-Mesh", event_type, message[:1000]
         )
 
-    async def _new_client(self) -> AsyncMongoClient:
-        client = AsyncMongoClient(
-            self.uri,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
-            socketTimeoutMS=10000,
-            maxPoolSize=50,
-            retryWrites=True,
-            appname="BharatGPilot-HealthMonitor",
-        )
-        try:
-            await client.admin.command("ping")
-            return client
-        except Exception:
-            await client.close()
-            raise
-
     async def check_once(self) -> bool:
         if not self.enabled:
             self._healthy = False
             return False
-        current = self._client
-        if current is not None:
-            try:
-                await current.admin.command("ping")
+        try:
+            if await self.audit_store.health_check():
                 if not self._healthy:
                     self._healthy = True
                     self._failure_count = 0
                     self._last_error = None
-                    await self._emit("recovery_success", "MongoDB Atlas ping succeeded; database connectivity is restored.")
+                    await self._emit("recovery_success", "MongoDB Atlas audit-store connection is healthy again.")
                 return True
-            except PyMongoError as exc:
-                self._last_error = type(exc).__name__
-                self._failure_count += 1
-                if self._healthy:
-                    await self._emit(
-                        "degradation_detected",
-                        "MongoDB Atlas ping failed. The worker is attempting bounded connection-pool recovery.",
-                    )
-                self._healthy = False
-                logger.warning("MongoDB health check failed (%s).", type(exc).__name__)
+        except Exception as exc:
+            self._last_error = type(exc).__name__
+            self._failure_count += 1
+            if self._healthy or self._failure_count == 1:
+                await self._emit(
+                    "degradation_detected",
+                    "MongoDB Atlas audit-store ping failed. Attempting to establish and verify a replacement connection.",
+                )
+            self._healthy = False
+            logger.warning("MongoDB health check failed (%s).", type(exc).__name__)
 
-        # Build and verify a candidate before swapping it into service; do not discard
-        # the old client until a replacement has passed its ping handshake.
+        # The audit store swaps its live client only after the replacement has
+        # passed ping, collection validation, and index checks.
         try:
-            replacement = await self._new_client()
+            await self.audit_store.reconnect()
         except Exception as exc:
             self._last_error = type(exc).__name__
             self._failure_count += 1
             return False
-
-        old = self._client
-        self._client = replacement
         self._healthy = True
         self._last_error = None
         self._failure_count = 0
-        if old is not None:
-            await old.close()
-        await self._emit("recovery_success", "A replacement MongoDB Atlas connection pool passed its ping handshake.")
+        await self._emit("recovery_success", "MongoDB Atlas audit-store client was safely replaced and verified.")
         return True
 
     async def start(self) -> None:
@@ -141,7 +116,4 @@ class MongoSelfHealingWorker:
 
     async def stop(self) -> None:
         self._running = False
-        if self._client is not None:
-            await self._client.close()
-            self._client = None
         self._healthy = False
