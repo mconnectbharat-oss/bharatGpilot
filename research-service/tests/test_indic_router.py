@@ -39,6 +39,16 @@ class IndicRouterTests(unittest.TestCase):
         self.assertEqual(package["language_code"], "hi")
         self.assertIn("untrusted data", package["system_instruction"])
 
+    def test_fallback_is_opt_in_and_language_specific(self):
+        env = {
+            "BGP_MODEL_NATIVE_INDIC": "primary/native-chat",
+            "BGP_MODEL_NATIVE_INDIC_FALLBACK": "backup/multilingual-chat",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            package = self.router.generate_localized_runtime_package("नमस्ते", "hi")
+        self.assertEqual(package["model"], "primary/native-chat")
+        self.assertEqual(package["fallback_model"], "backup/multilingual-chat")
+
 
 if __name__ == "__main__":
     unittest.main()
