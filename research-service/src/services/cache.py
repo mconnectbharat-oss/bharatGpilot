@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import re
-import unicodedata
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class ResponseCacheService:
         system_instruction: str = "",
         parameters: dict[str, Any] | None = None,
     ) -> str:
-        # Preserve case and wording; normalize only whitespace and Unicode.
+        # Preserve case and wording; normalize whitespace only.
         normalized_prompt = re.sub(r"\\s+", " ", unicodedata.normalize("NFC", prompt)).strip()
         material = json.dumps(
             {
