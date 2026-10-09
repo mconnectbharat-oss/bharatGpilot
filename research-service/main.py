@@ -18,6 +18,7 @@ from litellm import acompletion
 from src.services.guardrails import PromptGuardrails
 from src.services.alerts import SecurityAlertSystem
 from src.services.normalization import IndicTextNormalizer
+from src.services.audit_store import MongoDBAuditStore
 from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
 from src.services.ws_bridge import telemetry_bridge
@@ -37,8 +38,83 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
+
+@app.on_event("startup")
+async def initialize_security_audit_store() -> None:
+    try:
+        await audit_store.initialize_audit_infrastructure()
+    except Exception as exc:
+        logger.error("MongoDB audit initialization failed (%s). Audit storage remains unavailable.", type(exc).__name__)
+        if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true":
+            raise
+
+
+@app.on_event("shutdown")
+async def close_security_audit_store() -> None:
+    await audit_store.close()
+
+
+async def normalize_prompt_with_audit(prompt: str, request: Request) -> str:
+    try:
+        return text_normalizer.enforce_script_guardrails(prompt)
+    except HTTPException as exc:
+        if exc.status_code in (400, 413, 422):
+            client_ip = request.client.host if request.client else "unknown"
+            try:
+                await audit_store.log_security_alert(
+                    client_ip,
+                    "Unicode Script Anomaly",
+                    {
+                        "target_endpoint": request.url.path,
+                        "reason_code": "unicode_input_rejected",
+                        "status_code": exc.status_code,
+                    },
+                )
+            except Exception as audit_exc:
+                logger.warning("Security audit write failed (%s).", type(audit_exc).__name__)
+        raise
+
+
+@app.get("/api/v1/super-admin/logs")
+async def fetch_security_audit_trails(
+    request: Request,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    infraction_type: str | None = Query(default=None, max_length=100),
+) -> dict[str, object]:
+    """Internal audit endpoint protected by a dedicated high-entropy bearer token.
+
+    This sidecar must remain private to the trusted gateway/network. It deliberately
+    does not infer super-admin rights from email domains or user-controlled headers.
+    """
+    expected = os.getenv("BGP_AUDIT_ADMIN_TOKEN", "")
+    supplied_header = request.headers.get("authorization", "")
+    supplied = supplied_header[7:].strip() if supplied_header.lower().startswith("bearer ") else ""
+    if not expected:
+        raise HTTPException(status_code=503, detail="Security audit endpoint is not configured.")
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        client_ip = request.client.host if request.client else "unknown"
+        try:
+            await audit_store.log_security_alert(
+                client_ip,
+                "Unauthorized Resource Request",
+                {"target_endpoint": request.url.path, "reason_code": "audit_endpoint_auth_failed", "status_code": 403},
+            )
+        except Exception as audit_exc:
+            logger.warning("Security audit write failed (%s).", type(audit_exc).__name__)
+        raise HTTPException(status_code=403, detail="Insufficient audit access permissions.")
+    if not audit_store.enabled:
+        raise HTTPException(status_code=503, detail="Security audit storage is not configured.")
+    filters = {"infraction_type": infraction_type} if infraction_type else {}
+    try:
+        records = await audit_store.query_security_logs(filters, page=page, page_size=limit)
+    except Exception as exc:
+        logger.error("Security audit query failed (%s).", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Security audit storage is unavailable.") from None
+    return {"status": "success", "results_count": len(records), "page": page, "limit": limit, "logs": records}
 security_alerts = SecurityAlertSystem()
 text_normalizer = IndicTextNormalizer()
+audit_store = MongoDBAuditStore()
 
 HTTP_REQUESTS_TOTAL = Counter(
     "bharatgpilot_http_requests_total",
@@ -136,6 +212,14 @@ async def require_research_token(
     if not supplied or not hmac.compare_digest(supplied, expected):
         client_ip = connection.client.host if connection.client else "unknown"
         await security_alerts.record_auth_failure(client_ip, connection.url.path)
+        try:
+            await audit_store.log_security_alert(
+                client_ip,
+                "Unauthorized Resource Request",
+                {"target_endpoint": connection.url.path, "reason_code": "service_auth_failed", "status_code": 401},
+            )
+        except Exception as audit_exc:
+            logger.warning("Security audit write failed (%s).", type(audit_exc).__name__)
         raise HTTPException(status_code=401, detail="Authentication required.")
 
 
@@ -163,14 +247,14 @@ async def handle_telemetry_websocket_bridge(websocket: WebSocket) -> None:
 
 
 @app.post("/api/v1/chat/multilingual-stream", dependencies=[Depends(require_research_token)])
-async def execute_multilingual_stream(payload: MultilingualChatInput) -> StreamingResponse:
+async def execute_multilingual_stream(payload: MultilingualChatInput, request: Request) -> StreamingResponse:
     """Internal streaming chat route with language policy selection.
 
     Keep this sidecar behind the trusted API gateway; do not expose its shared
     service token or call it directly from the browser extension.
     """
     prompt = prompt_guardrails.validate_and_sanitize_prompt("service-request", payload.prompt)
-    prompt = text_normalizer.enforce_script_guardrails(prompt)
+    prompt = await normalize_prompt_with_audit(prompt, request)
     language = indic_router.determine_priority_language(prompt)
     runtime = indic_router.generate_localized_runtime_package(prompt, language)
 
@@ -230,6 +314,7 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
 @app.post("/api/v1/chat/cached-inference", dependencies=[Depends(require_research_token)])
 async def execute_cached_inference(
     payload: CachedChatInput,
+    request: Request,
     x_bgp_user_id: str | None = Header(default=None),
 ) -> dict[str, object]:
     """Internal, tenant-scoped non-streaming inference with best-effort Redis caching.
@@ -241,7 +326,7 @@ async def execute_cached_inference(
         raise HTTPException(status_code=401, detail="Authenticated user context required.")
 
     prompt = prompt_guardrails.validate_and_sanitize_prompt(x_bgp_user_id, payload.prompt)
-    prompt = text_normalizer.enforce_script_guardrails(prompt)
+    prompt = await normalize_prompt_with_audit(prompt, request)
     language = indic_router.determine_priority_language(prompt)
     runtime = indic_router.generate_localized_runtime_package(prompt, language)
     model = runtime["model"]
