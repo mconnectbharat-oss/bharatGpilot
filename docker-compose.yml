@@ -31,25 +31,7 @@ services:
     expose:
       - "4000"
     depends_on:
-      mongodb-backup-cron:
-    profiles: ["backup"]
-    build:
-      context: .
-      dockerfile: docker/mongodb-backup/Dockerfile
-    container_name: bgp-database-backup-cron
-    environment:
-      MONGODB_BACKUP_URI: ${MONGODB_BACKUP_URI:?Set a dedicated least-privilege MONGODB_BACKUP_URI}
-      BACKUP_DIR: /backups
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
-    volumes:
-      - ./cluster_backups:/backups
-    networks:
-      - app-internal
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-
-  qdrant:
+      qdrant:
         condition: service_healthy
     networks:
       - app-internal
@@ -68,6 +50,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  # Opt-in only. Uses a dedicated backup identity and writes local logical dumps.
+  # Enable with: docker compose --profile backup up -d --build mongodb-backup-cron
+  mongodb-backup-cron:
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: docker/mongodb-backup/Dockerfile
+    container_name: bgp-database-backup-cron
+    environment:
+      MONGODB_BACKUP_URI: ${MONGODB_BACKUP_URI:?Set a dedicated least-privilege MONGODB_BACKUP_URI}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./cluster_backups:/backups
+    networks:
+      - app-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   qdrant:
     image: qdrant/qdrant:v1.15.4
