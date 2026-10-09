@@ -21,6 +21,7 @@ from src.services.normalization import IndicTextNormalizer
 from src.services.audit_store import MongoDBAuditStore
 from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
+from src.services.spell_checker import IndicSpellPreProcessor
 from src.services.ws_bridge import telemetry_bridge
 from src.services.health_monitor import MongoSelfHealingWorker
 import asyncio
@@ -74,7 +75,13 @@ async def close_security_audit_store() -> None:
 
 async def normalize_prompt_with_audit(prompt: str, request: Request) -> str:
     try:
-        return text_normalizer.enforce_script_guardrails(prompt)
+        normalized = text_normalizer.enforce_script_guardrails(prompt)
+        # Keep fuzzy rewriting explicitly opt-in. Re-run prompt guardrails after
+        # preprocessing so convenience normalization cannot bypass validation.
+        if os.getenv("BGP_INDIC_FUZZY_PREPROCESSING_ENABLED", "false").lower() == "true":
+            preprocessed = spell_preprocessor.clean_text_pipeline(normalized)
+            return prompt_guardrails.validate_and_sanitize_prompt("service-request", preprocessed)
+        return normalized
     except HTTPException as exc:
         if exc.status_code in (400, 413, 422):
             client_ip = request.client.host if request.client else "unknown"
@@ -215,6 +222,7 @@ class CachedChatInput(BaseModel):
 
 indic_router = AdvancedIndicRouter()
 prompt_guardrails = PromptGuardrails()
+spell_preprocessor = IndicSpellPreProcessor()
 response_cache = ResponseCacheService()
 
 
