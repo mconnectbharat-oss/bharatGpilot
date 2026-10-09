@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 from litellm import acompletion
 
 from src.services.guardrails import PromptGuardrails
+from src.services.alerts import SecurityAlertSystem
+from src.services.normalization import IndicTextNormalizer
 from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
 from src.services.ws_bridge import telemetry_bridge
@@ -34,6 +36,8 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
+security_alerts = SecurityAlertSystem()
+text_normalizer = IndicTextNormalizer()
 
 HTTP_REQUESTS_TOTAL = Counter(
     "bharatgpilot_http_requests_total",
@@ -118,7 +122,10 @@ prompt_guardrails = PromptGuardrails()
 response_cache = ResponseCacheService()
 
 
-async def require_research_token(authorization: str | None = Header(default=None)) -> None:
+async def require_research_token(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> None:
     expected = os.getenv("BGP_RESEARCH_API_TOKEN", "")
     if not expected:
         if os.getenv("ENVIRONMENT", "").lower() == "production":
@@ -126,6 +133,8 @@ async def require_research_token(authorization: str | None = Header(default=None
         return
     supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
     if not supplied or not hmac.compare_digest(supplied, expected):
+        client_ip = request.client.host if request.client else "unknown"
+        await security_alerts.record_auth_failure(client_ip, request.url.path)
         raise HTTPException(status_code=401, detail="Authentication required.")
 
 
@@ -160,6 +169,7 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
     service token or call it directly from the browser extension.
     """
     prompt = prompt_guardrails.validate_and_sanitize_prompt("service-request", payload.prompt)
+    prompt = text_normalizer.enforce_script_guardrails(prompt)
     language = indic_router.determine_priority_language(prompt)
     runtime = indic_router.generate_localized_runtime_package(prompt, language)
 
@@ -230,6 +240,7 @@ async def execute_cached_inference(
         raise HTTPException(status_code=401, detail="Authenticated user context required.")
 
     prompt = prompt_guardrails.validate_and_sanitize_prompt(x_bgp_user_id, payload.prompt)
+    prompt = text_normalizer.enforce_script_guardrails(prompt)
     language = indic_router.determine_priority_language(prompt)
     runtime = indic_router.generate_localized_runtime_package(prompt, language)
     model = runtime["model"]
