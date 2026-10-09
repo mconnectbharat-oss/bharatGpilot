@@ -40,5 +40,6 @@ test("buildKnowledgeContext explicitly reports missing evidence", () => {
   const context = buildKnowledgeContext([]);
   assert.equal(context.retrieval, "no_evidence_found");
   assert.deepEqual(context.sources, []);
-  assert.equal(context.instruction, "");
+  assert.match(context.instruction, /No evidence found in the saved knowledge/);
+  assert.match(context.instruction, /For unrelated general questions, answer normally/);
 });
