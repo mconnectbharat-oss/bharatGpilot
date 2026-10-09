@@ -13,6 +13,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from src.agents.research import research_agent
+from fastapi import File, Form, UploadFile
+from src.services.document_processor import (
+    MAX_FILE_BYTES,
+    DocumentProcessingError,
+    process_and_index_document,
+)
+from src.services.rag_engine import RAGConfigurationError, RAGEngine
+
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -89,3 +97,48 @@ async def run_deep_research(request: ResearchRequest) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/api/v1/memo/documents", dependencies=[Depends(require_research_token)])
+async def upload_memo_document(
+    user_id: str = Form(min_length=1, max_length=256),
+    document_id: str = Form(min_length=1, max_length=128),
+    file: UploadFile = File(...),
+) -> dict[str, object]:
+    """Internal-service upload route; user_id must come from the trusted Express gateway.
+
+    Never expose this shared-token-protected sidecar directly to the browser.
+    The Express gateway must authenticate the user and supply req.user.id.
+    """
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="A filename is required.")
+    try:
+        content = await file.read(MAX_FILE_BYTES + 1)
+        if len(content) > MAX_FILE_BYTES:
+            raise HTTPException(status_code=413, detail="Files must be no larger than 10 MB.")
+        engine = RAGEngine()
+        try:
+            await engine.ensure_collection_exists()
+            result = await process_and_index_document(
+                engine,
+                user_id=user_id,
+                document_id=document_id,
+                filename=filename,
+                content=content,
+            )
+            return {"status": "indexed", **result}
+        finally:
+            await engine.close()
+    except DocumentProcessingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except RAGConfigurationError:
+        logger.exception("Memo RAG configuration error")
+        raise HTTPException(status_code=503, detail="Memo indexing is not configured correctly.") from None
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Memo indexing failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Document indexing failed. Check service configuration and logs.") from None
+    finally:
+        await file.close()
