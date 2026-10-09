@@ -41,6 +41,8 @@ app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
 
 @app.on_event("startup")
 async def initialize_security_audit_store() -> None:
+    if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true" and not audit_store.enabled:
+        raise RuntimeError("MONGODB_AUDIT_REQUIRED is true but MONGODB_ATLAS_URI is not configured.")
     try:
         await audit_store.initialize_audit_infrastructure()
     except Exception as exc:
@@ -94,6 +96,7 @@ async def fetch_security_audit_trails(
         raise HTTPException(status_code=503, detail="Security audit endpoint is not configured.")
     if not supplied or not hmac.compare_digest(supplied, expected):
         client_ip = request.client.host if request.client else "unknown"
+        await security_alerts.record_auth_failure(client_ip, request.url.path)
         try:
             await audit_store.log_security_alert(
                 client_ip,
