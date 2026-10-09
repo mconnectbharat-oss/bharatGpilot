@@ -57,3 +57,14 @@ python -m unittest discover -s tests -v
 ```
 
 The existing Prometheus/Grafana stack is preserved. Atlas metrics exporting is intentionally not wired to the same application URI: use a separate read-only metrics database identity and verify the chosen exporter version/flags before enabling it. Do not put Atlas API keys or database credentials in the Compose file.
+
+
+## MongoDB connectivity recovery and chat alerts
+
+When `MONGODB_ATLAS_URI` is configured, an asynchronous health worker performs a bounded ping check and verifies a replacement PyMongo Async connection before swapping clients. It emits sanitized recovery events to the existing process-local telemetry bridge and optional Slack/Discord HTTPS webhooks. The private `GET /api/v1/system/db-status` endpoint requires the research service bearer token; it reports status only and does not reveal the URI. Webhook delivery is best-effort and cannot be treated as a durable paging system. The existing audit store and health worker currently use separate MongoDB clients, so a healthy status confirms the worker's connectivity, not every database operation in the application.
+
+Set `SLACK_MONITOR_WEBHOOK_URL`, `DISCORD_MONITOR_WEBHOOK_URL`, and optionally `MONGODB_HEALTH_CHECK_INTERVAL_SECONDS` only in a secret runtime environment. Webhook URLs must use HTTPS. No real webhook is required for local tests.
+
+## Optional scheduled MongoDB logical backups
+
+The backup sidecar is opt-in and is not started by the default Compose profile. Configure `MONGODB_BACKUP_URI` as a dedicated least-privilege backup identity, then run `docker compose --profile backup up -d --build mongodb-backup-cron`. It writes compressed logical dumps under `./cluster_backups` at 00:00 UTC and removes local backup directories older than `BACKUP_RETENTION_DAYS` (14 by default). Protect this host directory: dumps are not encrypted by this container. This is **not** off-site replication; configure and test a separate encrypted cloud upload, restore drills, and alerting before treating backups as disaster recovery. The scheduled job does not automatically run at container start, so trigger `/usr/local/bin/mongodb-backup` manually once to verify credentials and storage. Do not use the application URI as the backup credential.
