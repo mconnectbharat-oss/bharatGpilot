@@ -14,6 +14,7 @@ import {
   registerUser,
   loginUser,
   logoutRequest,
+  rotateSession,
   requireAuth
 } from "./src/security/auth.js";
 import { getActionPolicySnapshot } from "./src/core/permissions.js";
@@ -83,6 +84,18 @@ app.post("/api/auth/logout", async (req, res) => {
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+// Rotates the authenticated opaque cookie session; this is not a JWT endpoint.
+app.post("/api/auth/refresh", requireAuth, async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await rotateSession(req, res));
+  } catch (error) {
+    if (error.status === 401) return res.status(401).json({ error: "Session expired. Please sign in again." });
+    console.error("Session rotation failed:", error.message);
+    res.status(503).json({ error: "Session renewal temporarily unavailable." });
+  }
 });
 
 app.get("/api/github/connect", requireAuth, async (req, res) => {
