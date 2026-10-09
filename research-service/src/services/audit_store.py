@@ -41,35 +41,55 @@ class MongoDBAuditStore:
         except ImportError as exc:
             raise RuntimeError("Install the pymongo dependency to enable MongoDB audit storage.") from exc
 
-        self._client = AsyncMongoClient(
+        # Keep the active client alive until a candidate has pinged and all
+        # required collection/index checks have completed successfully.
+        candidate = AsyncMongoClient(
             self.uri,
             serverSelectionTimeoutMS=5000,
             connectTimeoutMS=5000,
             appname="BharatGPilot-SecurityAudit",
         )
-        await self._client.admin.command("ping")
-        db = self._client[self.database_name]
-        names = await db.list_collection_names()
-        if self.COLLECTION_NAME not in names:
-            await db.create_collection(
-                self.COLLECTION_NAME,
-                capped=True,
-                size=self.collection_size_bytes,
-                max=1_000_000,
-            )
-        collection = db[self.COLLECTION_NAME]
-        info = await db.command("collStats", self.COLLECTION_NAME)
-        if not info.get("capped", False):
-            raise RuntimeError(
-                "Existing audit_trails collection is not capped; migrate it deliberately before enabling audit writes."
-            )
-        await collection.create_indexes([
-            IndexModel([("timestamp", DESCENDING)], name="audit_timestamp_desc"),
-            IndexModel([("client_ip", ASCENDING), ("timestamp", DESCENDING)], name="audit_ip_timestamp"),
-            IndexModel([("infraction_type", ASCENDING), ("timestamp", DESCENDING)], name="audit_type_timestamp"),
-        ])
+        try:
+            await candidate.admin.command("ping")
+            db = candidate[self.database_name]
+            names = await db.list_collection_names()
+            if self.COLLECTION_NAME not in names:
+                await db.create_collection(
+                    self.COLLECTION_NAME,
+                    capped=True,
+                    size=self.collection_size_bytes,
+                    max=1_000_000,
+                )
+            collection = db[self.COLLECTION_NAME]
+            info = await db.command("collStats", self.COLLECTION_NAME)
+            if not info.get("capped", False):
+                raise RuntimeError(
+                    "Existing audit_trails collection is not capped; migrate it deliberately before enabling audit writes."
+                )
+            await collection.create_indexes([
+                IndexModel([("timestamp", DESCENDING)], name="audit_timestamp_desc"),
+                IndexModel([("client_ip", ASCENDING), ("timestamp", DESCENDING)], name="audit_ip_timestamp"),
+                IndexModel([("infraction_type", ASCENDING), ("timestamp", DESCENDING)], name="audit_type_timestamp"),
+            ])
+        except Exception:
+            await candidate.close()
+            raise
+
+        old_client = self._client
+        self._client = candidate
         self._collection = collection
+        if old_client is not None:
+            await old_client.close()
         logger.info("MongoDB security audit store initialized.")
+
+    async def health_check(self) -> bool:
+        if self._client is None or self._collection is None:
+            return False
+        await self._client.admin.command("ping")
+        return True
+
+    async def reconnect(self) -> None:
+        await self.initialize_audit_infrastructure()
 
     async def close(self) -> None:
         if self._client is not None:
