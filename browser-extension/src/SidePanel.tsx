@@ -94,6 +94,33 @@ export default function SidePanel() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Keep the UI's session indicator synchronized with service-worker storage updates.
+  // A token replacement is silent: chat history, draft input, and the active stream remain intact.
+  useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return;
+
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== "local" || !Object.prototype.hasOwnProperty.call(changes, "bgp_token")) return;
+      const nextToken = changes.bgp_token?.newValue;
+      if (typeof nextToken === "string" && nextToken.length > 0) {
+        setSessionState("signed-in");
+        setErrorMessage((current) =>
+          current === "Your session expired. Please sign in again." ? "" : current
+        );
+      } else {
+        setSessionState("guest");
+        setErrorMessage("Your session expired. Please sign in again.");
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
+
+
   useEffect(() => {
     let alive = true;
     const applyContext = (message: { type?: string; data?: unknown }) => {
