@@ -1,0 +1,83 @@
+name: BharatGPilot Database Migration Safety Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'migrations/**'
+      - 'scripts/migrate.js'
+      - '.github/workflows/migration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'migrations/**'
+      - 'scripts/migrate.js'
+      - '.github/workflows/migration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-migrations:
+    name: Validate existing SQL migration chain on disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bgp_ci
+          POSTGRES_PASSWORD: bgp_ci_test_password
+          POSTGRES_DB: bgp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bgp_ci -d bgp_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Install dependencies
+        run: npm install --package-lock=false --ignore-scripts
+      - name: Apply all tracked migrations to a clean disposable database
+        env:
+          DATABASE_URL: postgresql://bgp_ci:bgp_ci_test_password@localhost:5432/bgp_ci
+        run: npm run db:migrate
+      - name: Verify migration runner is idempotent
+        env:
+          DATABASE_URL: postgresql://bgp_ci:bgp_ci_test_password@localhost:5432/bgp_ci
+        run: npm run db:migrate
+
+  deploy-production-migrations:
+    name: Production migration (manual dispatch + protected environment)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate-migrations
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Install dependencies
+        run: npm install --package-lock=false --ignore-scripts
+      - name: Apply reviewed SQL migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_PRODUCTION_URL }}
+        run: |
+          test -n "$DATABASE_URL"
+          npm run db:migrate
