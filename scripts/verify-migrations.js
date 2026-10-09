@@ -55,7 +55,7 @@ try {
   );
   const docB = await pool.query(
     "INSERT INTO knowledge_documents(user_id,title,source_name,character_count,chunk_count) VALUES($1,$2,$3,$4,$5) RETURNING id",
-    [userB, "Disposable migration check B", "ci-test", 34, 1]
+    [userB, "Disposable migration check B", "ci-test", 38, 1]
   );
   await pool.query(
     "INSERT INTO knowledge_chunks(document_id,user_id,chunk_index,content) VALUES($1,$2,0,$3),($4,$5,0,$3)",
