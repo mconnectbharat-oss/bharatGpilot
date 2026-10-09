@@ -9,7 +9,6 @@ async function deliverContext(type, data, tabId) {
   const payload = {
     type,
     data: typeof data === "string" ? data.slice(0, 16000) : "",
-    sourceUrl: typeof tabId === "number" ? undefined : undefined,
     createdAt: Date.now()
   };
   // Session storage avoids persisting captured page text across browser restarts.
