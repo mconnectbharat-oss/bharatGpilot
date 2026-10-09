@@ -34,10 +34,7 @@ Configure the Python service with:
   (1536 is common for OpenAI text-embedding-3-small, but must not be assumed for
   other models).
 
-Call `await RAGEngine.ensure_collection_exists()` during controlled service
-startup before using the engine. Use `upsert_document_chunks` after validating
-and extracting an allowed document type; use `retrieve_context` before
-synthesis. The engine requires tenant and document identifiers, applies a
+Call `await RAGEngine.ensure_collection_exists()` before using the engine. The internal `POST /api/v1/memo/documents` route now accepts multipart PDF/DOCX uploads and invokes bounded extraction, overlapping chunking, and Qdrant indexing. It is protected by the sidecar's shared service token and is intended to be called only by a trusted Express gateway that authenticates the session and supplies `req.user.id`; do not expose this route directly to the browser. Use `retrieve_context` before synthesis. The engine requires tenant and document identifiers, applies a
 Qdrant user filter, checks returned tenant IDs again, and uses deterministic
 UUID point IDs rather than Python's process-randomized `hash()`.
 
