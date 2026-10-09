@@ -82,30 +82,51 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
     runtime = indic_router.generate_localized_runtime_package(prompt, language)
 
     async def event_generator() -> AsyncIterator[str]:
-        try:
-            stream = await acompletion(
-                model=runtime["model"],
-                messages=[
-                    {"role": "system", "content": runtime["system_instruction"]},
-                    {"role": "user", "content": prompt},
-                ],
-                stream=True,
-                timeout=float(os.getenv("BGP_CHAT_TIMEOUT_SECONDS", "60")),
-            )
-            yield f"data: {json.dumps({'language': language, 'model': runtime['model']})}\n\n"
-            async for chunk in stream:
-                choices = getattr(chunk, "choices", None) or []
-                if not choices:
+        models = [runtime["model"]]
+        fallback_model = runtime.get("fallback_model", "")
+        if fallback_model:
+            models.append(fallback_model)
+
+        for attempt, model in enumerate(models):
+            emitted_content = False
+            try:
+                stream = await acompletion(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": runtime["system_instruction"]},
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=True,
+                    timeout=float(os.getenv("BGP_CHAT_TIMEOUT_SECONDS", "60")),
+                )
+                async for chunk in stream:
+                    choices = getattr(chunk, "choices", None) or []
+                    if not choices:
+                        continue
+                    delta = getattr(choices[0], "delta", None)
+                    text = getattr(delta, "content", None) if delta is not None else None
+                    if not isinstance(text, str) or not text:
+                        continue
+                    if not emitted_content:
+                        emitted_content = True
+                        yield f"data: {json.dumps({'language': language, 'model': model})}\\n\\n"
+                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\\n\\n"
+
+                if not emitted_content and attempt + 1 < len(models):
+                    logger.warning("Model returned no content; trying configured fallback.")
                     continue
-                delta = getattr(choices[0], "delta", None)
-                text = getattr(delta, "content", None) if delta is not None else None
-                if isinstance(text, str) and text:
-                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\n\n"
-            yield "data: [DONE]\n\n"
-        except Exception as exc:
-            logger.warning("Multilingual chat failed (%s)", type(exc).__name__)
-            yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\n\n"
-            yield "data: [DONE]\n\n"
+                if not emitted_content:
+                    yield f"data: {json.dumps({'language': language, 'model': model})}\\n\\n"
+                yield "data: [DONE]\\n\\n"
+                return
+            except Exception as exc:
+                logger.warning("Multilingual model request failed (%s)", type(exc).__name__)
+                # Retrying after output starts could duplicate or contradict streamed text.
+                if not emitted_content and attempt + 1 < len(models):
+                    continue
+                yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\\n\\n"
+                yield "data: [DONE]\\n\\n"
+                return
 
     return StreamingResponse(
         event_generator(),
