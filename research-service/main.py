@@ -10,6 +10,7 @@ from typing import AsyncIterator
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
+from starlette.requests import HTTPConnection
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 from litellm import acompletion
@@ -123,7 +124,7 @@ response_cache = ResponseCacheService()
 
 
 async def require_research_token(
-    request: Request,
+    connection: HTTPConnection,
     authorization: str | None = Header(default=None),
 ) -> None:
     expected = os.getenv("BGP_RESEARCH_API_TOKEN", "")
@@ -133,8 +134,8 @@ async def require_research_token(
         return
     supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
     if not supplied or not hmac.compare_digest(supplied, expected):
-        client_ip = request.client.host if request.client else "unknown"
-        await security_alerts.record_auth_failure(client_ip, request.url.path)
+        client_ip = connection.client.host if connection.client else "unknown"
+        await security_alerts.record_auth_failure(client_ip, connection.url.path)
         raise HTTPException(status_code=401, detail="Authentication required.")
 
 
