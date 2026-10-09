@@ -1,6 +1,4 @@
 import unittest
-from unittest.mock import patch
-
 from src.services.audit_store import _safe_metadata
 
 
