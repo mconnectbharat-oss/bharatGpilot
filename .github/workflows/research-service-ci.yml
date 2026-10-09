@@ -33,3 +33,9 @@ jobs:
       - name: Run unit tests
         working-directory: research-service
         run: python -m unittest discover -s tests -v
+      - name: Validate Docker Compose configuration
+        env:
+          BGP_RESEARCH_API_TOKEN: ci-placeholder-service-token
+          QDRANT_API_KEY: ci-placeholder-qdrant-key
+          GRAFANA_ADMIN_PASSWORD: ci-placeholder-grafana-password
+        run: docker compose config --quiet
