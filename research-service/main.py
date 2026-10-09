@@ -7,15 +7,18 @@ import logging
 import os
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 from litellm import acompletion
 
 from src.services.guardrails import PromptGuardrails
 from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
+from src.services.ws_bridge import telemetry_bridge
+import time
 
 from src.agents.research import research_agent
 from fastapi import File, Form, UploadFile
@@ -31,6 +34,78 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
+
+HTTP_REQUESTS_TOTAL = Counter(
+    "bharatgpilot_http_requests_total",
+    "Total HTTP requests processed by the research service.",
+    ["method", "endpoint", "status_code"],
+)
+INFERENCE_LATENCY = Histogram(
+    "bharatgpilot_inference_latency_seconds",
+    "Latency of non-streaming inference requests.",
+    ["model", "status"],
+)
+MODEL_TOKENS_TOTAL = Counter(
+    "bharatgpilot_model_tokens_total",
+    "Provider-reported model tokens used by non-streaming inference.",
+    ["model", "token_type"],
+)
+
+
+@app.middleware("http")
+async def monitor_infrastructure_performance(request: Request, call_next):
+    started = time.monotonic()
+    status_code = "500"
+    try:
+        response = await call_next(request)
+        status_code = str(response.status_code)
+        return response
+    finally:
+        duration = time.monotonic() - started
+        route = request.scope.get("route")
+        endpoint = getattr(route, "path", "unmatched")
+        HTTP_REQUESTS_TOTAL.labels(request.method, endpoint, status_code).inc()
+        if endpoint == "/api/v1/chat/cached-inference":
+            INFERENCE_LATENCY.labels("router-selected", status_code).observe(duration)
+        # Send aggregate metadata only; never include request bodies, headers, or identities.
+        try:
+            await telemetry_bridge.broadcast_live_metric_packet({
+                "type": "http_request",
+                "method": request.method,
+                "endpoint": endpoint,
+                "status_code": int(status_code),
+                "duration_seconds": round(duration, 4),
+            })
+        except Exception as exc:
+            logger.debug("Telemetry broadcast skipped (%s)", type(exc).__name__)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def expose_metrics_to_prometheus() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.websocket(
+    "/api/v1/telemetry/stream-bridge",
+    dependencies=[Depends(require_research_token)],
+)
+async def handle_telemetry_websocket_bridge(websocket: WebSocket) -> None:
+    """Internal-only telemetry bridge. Authenticate via Authorization header.
+
+    Browser clients cannot attach this service token safely; connect through a
+    trusted authenticated gateway. Do not pass credentials in query parameters.
+    """
+    await telemetry_bridge.register_admin_socket(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # gateway heartbeat / connection lifecycle
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logger.debug("Telemetry WebSocket closed (%s)", type(exc).__name__)
+    finally:
+        await telemetry_bridge.sever_admin_socket(websocket)
+
 
 allowed_origins = [
     origin.strip()
@@ -182,6 +257,8 @@ async def execute_cached_inference(
             raise HTTPException(status_code=502, detail="The model returned an empty response.")
         usage = getattr(response, "usage", None)
         tokens = getattr(usage, "total_tokens", None) if usage is not None else None
+        if isinstance(tokens, int) and tokens > 0:
+            MODEL_TOKENS_TOTAL.labels(model, "total").inc(tokens)
         result = {"content": content, "tokens": tokens}
         await response_cache.set_response_cache(
             x_bgp_user_id, model, prompt, result, system_instruction, parameters
