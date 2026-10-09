@@ -1,0 +1,40 @@
+name: BharatGPilot Provisioning Logic & Configuration Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "grafana/provisioning/**"
+      - "grafana/dashboards/**"
+      - "docker-compose.yml"
+      - "prometheus.yml"
+      - ".github/workflows/lint-provisioning.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-provisioning:
+    name: Lint and validate observability configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install YAML linter
+        run: |
+          python -m pip install --disable-pip-version-check yamllint
+      - name: Lint provisioning and Compose YAML
+        run: |
+          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: {allowed-values: [true, false, on, off]}}}" grafana/provisioning docker-compose.yml prometheus.yml
+      - name: Validate Docker Compose model
+        env:
+          BGP_RESEARCH_API_TOKEN: validation-only-not-a-real-secret
+          QDRANT_API_KEY: validation-only-not-a-real-secret
+          GRAFANA_ADMIN_PASSWORD: validation-only-not-a-real-secret
+          MONGODB_ATLAS_URI: mongodb://validation:validation@localhost:27017/test
+          MONGODB_BACKUP_URI: mongodb://validation:validation@localhost:27017/test
+        run: docker compose --profile backup config --quiet
