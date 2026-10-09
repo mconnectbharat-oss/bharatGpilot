@@ -373,3 +373,14 @@ Powered by configurable AI providers.
 The project is currently under development.
 
 Choose and add an explicit open-source or proprietary license before distributing the project.
+
+
+---
+
+## 📈 Observability and Tenant Onboarding
+
+- [Observability architecture blueprint](docs/architecture/observability-blueprint.md) documents the current Compose monitoring topology and distinguishes implemented services from planned components.
+- [Tenant workspace node profile template](docs/tenant-onboarding/workspace-node-profile.json) and [JSON Schema](docs/tenant-onboarding/workspace-node-profile.schema.json) define an onboarding starting point. Replace all sample identifiers and certificate fingerprints before use; never put private JWTs, private keys, or API tokens in the profile.
+- Grafana datasource provisioning is maintained at `grafana/provisioning/datasources/datasources.yml`. The existing Compose mount loads the complete provisioning directory at startup.
+- The MongoDB audit fixture seeder is opt-in and staging-only: see `research-service/scripts/seed_mongo_staging.py`. It requires a separate `MONGODB_STAGING_URI` and `BGP_SEED_STAGING=true`; it does not accept the application URI as its seed target.
+- Do not run seed utilities against production. The existing PostgreSQL schema does not contain the proposed `profiles` or `wallets` tables, and `credit_ledger` requires payment-linked order identifiers. Financial staging fixtures need a schema-aligned, explicitly staging-only design rather than fabricated payment records.
