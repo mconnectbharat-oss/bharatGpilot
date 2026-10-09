@@ -12,6 +12,7 @@
     "dev": "node --watch server.js",
     "test": "node --test",
     "db:migrate": "node scripts/migrate.js",
+    "test:migrations": "node scripts/verify-migrations.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
