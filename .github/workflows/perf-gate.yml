@@ -1,0 +1,37 @@
+name: BharatGPilot Fuzzy Matching Performance Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research-service/src/services/fuzzy_checker.py"
+      - "research-service/src/services/spell_checker.py"
+      - "research-service/scripts/benchmark_fuzzy.py"
+      - "research-service/tests/test_spell_checker.py"
+      - ".github/workflows/perf-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzzy-performance:
+    name: Benchmark Indic fuzzy matching
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run deterministic unit tests
+        working-directory: research-service
+        run: python -m unittest discover -s tests -p "test_spell_checker.py" -v
+
+      - name: Run concurrent latency benchmark
+        env:
+          BGP_FUZZY_P95_LIMIT_MS: "5.0"
+        run: python research-service/scripts/benchmark_fuzzy.py --requests 1000 --concurrency 100 --max-p95-ms 5.0
