@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: BharatGPilot dashboards
+    orgId: 1
+    folder: BharatGPilot
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /etc/grafana/dashboards
