@@ -36,7 +36,7 @@ try {
   assert.ok(schema.rows[0].documents_table, "knowledge_documents table should exist");
   assert.ok(schema.rows[0].chunks_table, "knowledge_chunks table should exist");
   assert.ok(schema.rows[0].search_index, "GIN search index should exist");
-  assert.equal(schema.rows[0].vector_type, "USER-DEFINED", "generated tsvector column should exist");
+  assert.equal(schema.rows[0].vector_type, "tsvector", "generated tsvector column should exist");
 
   const userAResult = await pool.query(
     "INSERT INTO users(email,password_hash,password_salt) VALUES($1,$2,$3) RETURNING id",
