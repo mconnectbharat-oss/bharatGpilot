@@ -92,7 +92,7 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
                 stream=True,
                 timeout=float(os.getenv("BGP_CHAT_TIMEOUT_SECONDS", "60")),
             )
-            yield f"data: {json.dumps({'language': language, 'model': runtime['model']})}\\n\\n"
+            yield f"data: {json.dumps({'language': language, 'model': runtime['model']})}\n\n"
             async for chunk in stream:
                 choices = getattr(chunk, "choices", None) or []
                 if not choices:
@@ -100,12 +100,12 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
                 delta = getattr(choices[0], "delta", None)
                 text = getattr(delta, "content", None) if delta is not None else None
                 if isinstance(text, str) and text:
-                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\\n\\n"
-            yield "data: [DONE]\\n\\n"
+                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
         except Exception as exc:
             logger.warning("Multilingual chat failed (%s)", type(exc).__name__)
-            yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\\n\\n"
-            yield "data: [DONE]\\n\\n"
+            yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_generator(),
