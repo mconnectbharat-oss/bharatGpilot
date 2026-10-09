@@ -29,6 +29,7 @@ import { detectIntent, buildCopilotSystemPrompt } from "./src/services/intent-en
 import { buildGitHubIntelligence } from "./src/github/github-intelligence.js";
 import { listMemories, createMemory, deleteMemory } from "./src/services/agent-memory.js";
 import { dispatchAutomationEvent, getAutomationStatus } from "./src/services/n8n-automation.js";
+import { createBillingOrder, processRazorpayWebhook } from "./src/services/billing.js";
 
 
 
@@ -43,7 +44,14 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true
 }));
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({
+  limit: "1mb",
+  verify: (req, _res, buffer) => {
+    if (req.originalUrl.split("?")[0] === "/api/billing/razorpay-webhook") {
+      req.rawBody = Buffer.from(buffer);
+    }
+  }
+}));
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -345,6 +353,39 @@ app.post("/api/pilot/automation/dispatch", requireAuth, async (req, res) => {
     res.status(result.dispatched ? 202 : 200).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message || "Automation dispatch failed." });
+  }
+});
+
+
+app.post("/api/billing/orders", requireAuth, async (req, res) => {
+  try {
+    const order = await createBillingOrder(req.user.id, req.body?.amount);
+    res.status(201).json(order);
+  } catch (error) {
+    const status = Number.isInteger(error.statusCode) ? error.statusCode : 503;
+    res.status(status).json({ error: status === 400 ? error.message : "Could not create a payment order." });
+  }
+});
+
+app.get("/api/billing/wallet", requireAuth, async (req, res) => {
+  try {
+    const result = await query("SELECT balance FROM credit_wallets WHERE user_id=$1", [req.user.id]);
+    res.json({ credits: Number(result.rows[0]?.balance ?? 0) });
+  } catch {
+    res.status(503).json({ error: "Wallet service unavailable." });
+  }
+});
+
+app.post("/api/billing/razorpay-webhook", async (req, res) => {
+  try {
+    if (!Buffer.isBuffer(req.rawBody)) {
+      return res.status(400).json({ error: "Raw webhook payload is required." });
+    }
+    const result = await processRazorpayWebhook(req.rawBody, req.get("x-razorpay-signature"));
+    res.status(200).json(result);
+  } catch (error) {
+    const status = Number.isInteger(error.statusCode) ? error.statusCode : 503;
+    res.status(status).json({ error: status === 400 ? error.message : "Payment webhook processing unavailable." });
   }
 });
 
