@@ -1,0 +1,35 @@
+{
+  "$schema": "./workspace-node-profile.schema.json",
+  "tenant_id": "tnnt_staging_replace_me",
+  "workspace_node": {
+    "node_identifier": "edge-node-replace-me",
+    "environment": "staging",
+    "connection_protocol": "https",
+    "secure_gateway_url": "https://tenant.example.invalid"
+  },
+  "authentication": {
+    "handshake_mechanism": "mTLS+JWT",
+    "app_token_rotation_interval_seconds": 86400,
+    "public_key_fingerprint": "SHA256:REPLACE_WITH_REAL_CERTIFICATE_FINGERPRINT"
+  },
+  "regional_routing_matrix": {
+    "default_fallback_strategy": "graceful-degradation",
+    "priority_languages": ["en-in", "hi", "bn", "ta", "mr"],
+    "indic_model_overrides": {
+      "hi": "bharatgpilot-native-indic",
+      "ta": "bharatgpilot-native-indic",
+      "bn": "bharatgpilot-native-indic"
+    }
+  },
+  "context_retrieval_rag": {
+    "isolated_collection_alias": "tenant_chunks_replace_me",
+    "vector_dimensions": 1536,
+    "distance_metric": "cosine",
+    "max_context_chunks_per_query": 5
+  },
+  "billing_limits": {
+    "hard_token_cap_monthly": 50000000,
+    "soft_alert_threshold_percentage": 80,
+    "allowed_model_classes": ["standard", "ultra", "deep", "indic"]
+  }
+}
