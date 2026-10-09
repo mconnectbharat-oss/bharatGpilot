@@ -44,7 +44,8 @@ class SecurityAlertSystem:
 
         if len(failures) < self.threshold:
             return False
-        if now - self._last_alert.get(key, 0.0) < self.window_seconds:
+        last_alert = self._last_alert.get(key)
+        if last_alert is not None and now - last_alert < self.window_seconds:
             return False
         self._last_alert[key] = now
         return await self._send_alert(key, endpoint, len(failures))
