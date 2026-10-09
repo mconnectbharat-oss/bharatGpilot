@@ -1,0 +1,13 @@
+groups:
+  - name: bharatgpilot-security-intrusion-rules
+    rules:
+      - alert: CoordinatedJailbreakAttackSpike
+        expr: sum(increase(bharatgpilot_security_infractions_total[5m])) > 15
+        for: 1m
+        labels:
+          severity: critical
+          tier: security
+        annotations:
+          summary: "BharatGPilot security rejection spike detected"
+          description: "More than 15 security-related request rejections were recorded over five minutes. Investigate authentication failures and input guardrail rejections; this metric is an indicator, not proof of a coordinated attack."
+          runbook_url: "https://github.com/mconnectbharat-oss/bharatGpilot"
