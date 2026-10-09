@@ -1,0 +1,54 @@
+name: Vercel Preview Leak Protection Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-environment-exposure:
+    name: Audit source and deployment configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Scan source files for hard-coded database URLs
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          roots = [Path('src'), Path('research-service'), Path('server.js')]
+          pattern = re.compile(r'\bpostgres(?:ql)?://[^\s\"\'`]+', re.IGNORECASE)
+          suffixes = {'.js', '.ts', '.tsx', '.py', '.json', '.yml', '.yaml'}
+          findings = []
+          for root in roots:
+              candidates = [root] if root.is_file() else root.rglob('*') if root.exists() else []
+              for path in candidates:
+                  if path.is_file() and path.suffix in suffixes:
+                      try:
+                          lines = path.read_text(encoding='utf-8').splitlines()
+                      except (UnicodeDecodeError, OSError):
+                          continue
+                      for number, line in enumerate(lines, 1):
+                          if pattern.search(line):
+                              findings.append(f'{path}:{number}')
+          if findings:
+              print('\n'.join(findings))
+              raise SystemExit('Potential hard-coded database URL found. Use deployment environment secrets.')
+          print('No hard-coded database URL patterns found in scanned source paths.')
+          PY
+      - name: Verify the existing Vercel runtime configuration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          config = json.loads(Path('vercel.json').read_text(encoding='utf-8'))
+          builds = config.get('builds', [])
+          if not any(item.get('src') == 'server.js' and item.get('use') == '@vercel/node' for item in builds):
+              raise SystemExit('Unexpected Vercel runtime config: expected the existing server.js @vercel/node entrypoint.')
+          print('Vercel configuration retains the existing Express serverless entrypoint.')
+          PY
