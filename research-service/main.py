@@ -85,27 +85,6 @@ async def expose_metrics_to_prometheus() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.websocket(
-    "/api/v1/telemetry/stream-bridge",
-    dependencies=[Depends(require_research_token)],
-)
-async def handle_telemetry_websocket_bridge(websocket: WebSocket) -> None:
-    """Internal-only telemetry bridge. Authenticate via Authorization header.
-
-    Browser clients cannot attach this service token safely; connect through a
-    trusted authenticated gateway. Do not pass credentials in query parameters.
-    """
-    await telemetry_bridge.register_admin_socket(websocket)
-    try:
-        while True:
-            await websocket.receive_text()  # gateway heartbeat / connection lifecycle
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.debug("Telemetry WebSocket closed (%s)", type(exc).__name__)
-    finally:
-        await telemetry_bridge.sever_admin_socket(websocket)
-
 
 allowed_origins = [
     origin.strip()
@@ -149,6 +128,28 @@ async def require_research_token(authorization: str | None = Header(default=None
     if not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Authentication required.")
 
+
+
+@app.websocket(
+    "/api/v1/telemetry/stream-bridge",
+    dependencies=[Depends(require_research_token)],
+)
+async def handle_telemetry_websocket_bridge(websocket: WebSocket) -> None:
+    """Internal-only telemetry bridge. Authenticate via Authorization header.
+
+    Browser clients cannot attach this service token safely; connect through a
+    trusted authenticated gateway. Do not pass credentials in query parameters.
+    """
+    await telemetry_bridge.register_admin_socket(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # gateway heartbeat / connection lifecycle
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logger.debug("Telemetry WebSocket closed (%s)", type(exc).__name__)
+    finally:
+        await telemetry_bridge.sever_admin_socket(websocket)
 
 
 @app.post("/api/v1/chat/multilingual-stream", dependencies=[Depends(require_research_token)])
