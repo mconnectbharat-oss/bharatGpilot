@@ -8,7 +8,17 @@ language model or a security control.
 from __future__ import annotations
 
 import unicodedata
+import time
 from typing import Optional
+
+try:
+    from prometheus_client import Histogram
+    FUZZY_MATCH_LATENCY = Histogram(
+        "bharatgpilot_fuzzy_match_latency_seconds",
+        "Wall-clock duration of fuzzy text preprocessing calls.",
+    )
+except ImportError:  # Keep the helper usable in lightweight local environments.
+    FUZZY_MATCH_LATENCY = None
 
 
 class FuzzyScriptEngine:
@@ -80,7 +90,7 @@ class FuzzyScriptEngine:
         # Ambiguous guesses are left untouched rather than silently changing meaning.
         return best_words[0] if len(best_words) == 1 else input_token
 
-    def execute_fuzzy_pipeline(self, prompt_text: str) -> str:
+    def _execute_fuzzy_pipeline(self, prompt_text: str) -> str:
         """Correct isolated whitespace-delimited Indic tokens and preserve spacing."""
         if not prompt_text:
             return ""
@@ -103,3 +113,12 @@ class FuzzyScriptEngine:
             token = part[start:end]
             output.append(part[:start] + self.resolve_dynamic_typo(token) + part[end:])
         return "".join(output)
+
+    def execute_fuzzy_pipeline(self, prompt_text: str) -> str:
+        """Run fuzzy preprocessing and publish duration when Prometheus is available."""
+        started = time.perf_counter()
+        try:
+            return self._execute_fuzzy_pipeline(prompt_text)
+        finally:
+            if FUZZY_MATCH_LATENCY is not None:
+                FUZZY_MATCH_LATENCY.observe(time.perf_counter() - started)
