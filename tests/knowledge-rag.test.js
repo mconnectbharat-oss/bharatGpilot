@@ -15,6 +15,14 @@ test("chunkText preserves Unicode and rejects empty or oversized input", () => {
   assert.throws(() => chunkText("x".repeat(100001)), /100000 characters/);
 });
 
+test("chunkText supports a maximum-size document with bounded chunk count", () => {
+  const chars = Array(100000).fill("x");
+  for (let index = 780; index < chars.length; index += 630) chars[index] = " ";
+  const chunks = chunkText(chars.join(""));
+  assert.ok(chunks.length <= 160);
+  assert.ok(chunks.every((chunk) => chunk.length <= 1200));
+});
+
 test("chunkText rejects invalid overlap and limits", () => {
   assert.throws(() => chunkText("valid text", { chunkSize: 50 }), /between 100 and 2400/);
   assert.throws(() => chunkText("valid text", { chunkSize: 100, overlap: 100 }), /smaller than chunk size/);
