@@ -376,7 +376,11 @@ app.post("/api/pilot/knowledge", requireAuth, async (req, res) => {
     });
     res.status(201).json({ document });
   } catch (error) {
-    res.status(400).json({ error: error.message || "Knowledge document could not be saved." });
+    if (error?.code === "BGP_KNOWLEDGE_INPUT") {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error("Knowledge document save failed:", error.message);
+    res.status(503).json({ error: "Knowledge document could not be saved." });
   }
 });
 
