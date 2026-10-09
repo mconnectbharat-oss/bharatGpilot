@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
   title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
   source_name TEXT NOT NULL DEFAULT '',
   character_count INTEGER NOT NULL CHECK (character_count BETWEEN 1 AND 100000),
-  chunk_count INTEGER NOT NULL CHECK (chunk_count BETWEEN 1 AND 100),
+  chunk_count INTEGER NOT NULL CHECK (chunk_count BETWEEN 1 AND 160),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
