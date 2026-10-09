@@ -45,7 +45,7 @@ class ResponseCacheTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_key_normalizes_whitespace_without_exposing_prompt(self):
         first = ResponseCacheService._generate_cache_key("u", "m", "hello   world")
-        second = ResponseCacheService._generate_cache_key("u", "m", "hello\\nworld")
+        second = ResponseCacheService._generate_cache_key("u", "m", "hello" + chr(10) + "world")
         self.assertEqual(first, second)
         self.assertNotIn("hello", first)
 
