@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bharatgpilot.invalid/schemas/workspace-node-profile.schema.json",
+  "title": "BharatGPilot Workspace Node Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant_id", "workspace_node", "authentication", "regional_routing_matrix", "context_retrieval_rag", "billing_limits"],
+  "properties": {
+    "tenant_id": {"type": "string", "pattern": "^tnnt_[a-zA-Z0-9_-]{3,80}$"},
+    "workspace_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_identifier", "environment", "connection_protocol", "secure_gateway_url"],
+      "properties": {
+        "node_identifier": {"type": "string", "minLength": 3, "maxLength": 100},
+        "environment": {"enum": ["development", "staging", "production"]},
+        "connection_protocol": {"enum": ["https", "grpc", "grpcs"]},
+        "secure_gateway_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
+    },
+    "authentication": {
+      "type": "object", "additionalProperties": false,
+      "required": ["handshake_mechanism", "app_token_rotation_interval_seconds", "public_key_fingerprint"],
+      "properties": {
+        "handshake_mechanism": {"const": "mTLS+JWT"},
+        "app_token_rotation_interval_seconds": {"type": "integer", "minimum": 300, "maximum": 2592000},
+        "public_key_fingerprint": {"type": "string", "pattern": "^SHA256:[A-Za-z0-9+/=_-]{16,}$"}
+      }
+    },
+    "regional_routing_matrix": {
+      "type": "object", "additionalProperties": false,
+      "required": ["default_fallback_strategy", "priority_languages", "indic_model_overrides"],
+      "properties": {
+        "default_fallback_strategy": {"enum": ["graceful-degradation", "fail-closed"]},
+        "priority_languages": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}(-[a-z]{2})?$"}},
+        "indic_model_overrides": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "context_retrieval_rag": {
+      "type": "object", "additionalProperties": false,
+      "required": ["isolated_collection_alias", "vector_dimensions", "distance_metric", "max_context_chunks_per_query"],
+      "properties": {
+        "isolated_collection_alias": {"type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{2,100}$"},
+        "vector_dimensions": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "distance_metric": {"enum": ["cosine", "dot", "euclid"]},
+        "max_context_chunks_per_query": {"type": "integer", "minimum": 1, "maximum": 50}
+      }
+    },
+    "billing_limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["hard_token_cap_monthly", "soft_alert_threshold_percentage", "allowed_model_classes"],
+      "properties": {
+        "hard_token_cap_monthly": {"type": "integer", "minimum": 1},
+        "soft_alert_threshold_percentage": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+        "allowed_model_classes": {"type": "array", "uniqueItems": true, "minItems": 1, "items": {"enum": ["standard", "ultra", "deep", "indic"]}}
+      }
+    }
+  }
+}
