@@ -22,6 +22,8 @@ from src.services.audit_store import MongoDBAuditStore
 from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
 from src.services.ws_bridge import telemetry_bridge
+from src.services.health_monitor import MongoSelfHealingWorker
+import asyncio
 import time
 
 from src.agents.research import research_agent
@@ -38,9 +40,12 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BharatGPilot Research Service", version="0.1.0")
+health_worker = MongoSelfHealingWorker(telemetry_bridge)
+health_worker_task: asyncio.Task | None = None
 
 @app.on_event("startup")
 async def initialize_security_audit_store() -> None:
+    global health_worker_task
     if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true" and not audit_store.enabled:
         raise RuntimeError("MONGODB_AUDIT_REQUIRED is true but MONGODB_ATLAS_URI is not configured.")
     try:
@@ -49,10 +54,19 @@ async def initialize_security_audit_store() -> None:
         logger.error("MongoDB audit initialization failed (%s). Audit storage remains unavailable.", type(exc).__name__)
         if os.getenv("MONGODB_AUDIT_REQUIRED", "false").lower() == "true":
             raise
+    if health_worker.enabled:
+        health_worker_task = asyncio.create_task(health_worker.start(), name="mongodb-health-recovery")
 
 
 @app.on_event("shutdown")
 async def close_security_audit_store() -> None:
+    if health_worker_task is not None:
+        health_worker_task.cancel()
+        try:
+            await health_worker_task
+        except asyncio.CancelledError:
+            pass
+    await health_worker.stop()
     await audit_store.close()
 
 
@@ -370,6 +384,15 @@ async def execute_cached_inference(
     except Exception as exc:
         logger.warning("Cached inference failed (%s)", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Inference failed. Check service configuration.") from None
+
+
+@app.get("/api/v1/system/db-status", dependencies=[Depends(require_research_token)])
+async def database_status() -> dict[str, object]:
+    """Private health snapshot; never expose the MongoDB URI or exception details."""
+    state = health_worker.status()
+    if state["configured"] and state["status"] != "connected":
+        raise HTTPException(status_code=503, detail=state)
+    return state
 
 
 @app.get("/health")
