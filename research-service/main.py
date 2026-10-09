@@ -109,23 +109,23 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
                         continue
                     if not emitted_content:
                         emitted_content = True
-                        yield f"data: {json.dumps({'language': language, 'model': model})}\\n\\n"
-                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\\n\\n"
+                        yield f"data: {json.dumps({'language': language, 'model': model})}\n\n"
+                    yield f"data: {json.dumps({'delta': text}, ensure_ascii=False)}\n\n"
 
                 if not emitted_content and attempt + 1 < len(models):
                     logger.warning("Model returned no content; trying configured fallback.")
                     continue
                 if not emitted_content:
-                    yield f"data: {json.dumps({'language': language, 'model': model})}\\n\\n"
-                yield "data: [DONE]\\n\\n"
+                    yield f"data: {json.dumps({'language': language, 'model': model})}\n\n"
+                yield "data: [DONE]\n\n"
                 return
             except Exception as exc:
                 logger.warning("Multilingual model request failed (%s)", type(exc).__name__)
                 # Retrying after output starts could duplicate or contradict streamed text.
                 if not emitted_content and attempt + 1 < len(models):
                     continue
-                yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\\n\\n"
-                yield "data: [DONE]\\n\\n"
+                yield f"data: {json.dumps({'error': 'Multilingual response failed. Check service configuration.'})}\n\n"
+                yield "data: [DONE]\n\n"
                 return
 
     return StreamingResponse(
