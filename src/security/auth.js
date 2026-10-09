@@ -16,3 +16,22 @@ export async function loginUser({email,password},res){ const e=assertCredentials
 export async function authenticateRequest(req){ const token=readCookie(req); if(!token)return null; const tokenHash=hashSessionToken(token); const result=await query("SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()",[tokenHash]); const user=result.rows[0]; if(!user)return null; await query("UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1",[tokenHash]); return user; }
 export async function logoutRequest(req,res){ const token=readCookie(req); if(token) await query("DELETE FROM sessions WHERE token_hash=$1",[hashSessionToken(token)]); clearSessionCookie(res); }
 export async function requireAuth(req,res,next){ try{ const user=await authenticateRequest(req); if(!user)return res.status(401).json({error:"Authentication required."}); req.user=user; next(); }catch(error){ console.error("Auth error:",error.message); res.status(503).json({error:"Authentication service unavailable."}); } }
+// Rotate an authenticated opaque session token atomically. The browser never receives
+// the stored token hash, and a previously rotated token cannot be reused.
+export async function rotateSession(req, res) {
+  const currentToken = readCookie(req);
+  if (!currentToken) throw Object.assign(new Error("Authentication required."), { status: 401 });
+
+  const next = issueSession("");
+  const currentHash = hashSessionToken(currentToken);
+  const nextHash = hashSessionToken(next.token);
+  const result = await query(
+    "UPDATE sessions s SET token_hash=$2, expires_at=$3, last_seen_at=now() FROM users u WHERE s.user_id=u.id AND s.token_hash=$1 AND s.expires_at>now() RETURNING s.user_id,u.email,s.expires_at",
+    [currentHash, nextHash, next.expiresAt]
+  );
+  const row = result.rows[0];
+  if (!row) throw Object.assign(new Error("Session expired or already rotated."), { status: 401 });
+
+  setSessionCookie(res, next.token, row.expires_at);
+  return { status: "rotated", user: { id: row.user_id, email: row.email } };
+}
