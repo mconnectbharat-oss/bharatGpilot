@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from litellm import acompletion
 
 from src.services.guardrails import PromptGuardrails
+from src.services.cache import ResponseCacheService
 from src.services.indic_router import AdvancedIndicRouter
 
 from src.agents.research import research_agent
@@ -54,8 +55,13 @@ class MultilingualChatInput(BaseModel):
     prompt: str = Field(min_length=2, max_length=12000)
 
 
+class CachedChatInput(BaseModel):
+    prompt: str = Field(min_length=2, max_length=12000)
+
+
 indic_router = AdvancedIndicRouter()
 prompt_guardrails = PromptGuardrails()
+response_cache = ResponseCacheService()
 
 
 async def require_research_token(authorization: str | None = Header(default=None)) -> None:
@@ -133,6 +139,60 @@ async def execute_multilingual_stream(payload: MultilingualChatInput) -> Streami
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
+
+@app.post("/api/v1/chat/cached-inference", dependencies=[Depends(require_research_token)])
+async def execute_cached_inference(
+    payload: CachedChatInput,
+    x_bgp_user_id: str | None = Header(default=None),
+) -> dict[str, object]:
+    """Internal, tenant-scoped non-streaming inference with best-effort Redis caching.
+
+    The trusted Express gateway must set X-BGP-User-ID from its authenticated session.
+    Never accept this header directly from an untrusted browser or expose this sidecar.
+    """
+    if not x_bgp_user_id or not x_bgp_user_id.strip():
+        raise HTTPException(status_code=401, detail="Authenticated user context required.")
+
+    prompt = prompt_guardrails.validate_and_sanitize_prompt(x_bgp_user_id, payload.prompt)
+    language = indic_router.determine_priority_language(prompt)
+    runtime = indic_router.generate_localized_runtime_package(prompt, language)
+    model = runtime["model"]
+    system_instruction = runtime["system_instruction"]
+    parameters = {"temperature": 0}
+
+    cached = await response_cache.get_cached_response(
+        x_bgp_user_id, model, prompt, system_instruction, parameters
+    )
+    if cached is not None:
+        return {"source": "cache", "language": language, "model": model, "data": cached}
+
+    try:
+        response = await acompletion(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            timeout=float(os.getenv("BGP_CHAT_TIMEOUT_SECONDS", "60")),
+        )
+        choices = getattr(response, "choices", None) or []
+        content = getattr(getattr(choices[0], "message", None), "content", None) if choices else None
+        if not isinstance(content, str) or not content.strip():
+            raise HTTPException(status_code=502, detail="The model returned an empty response.")
+        usage = getattr(response, "usage", None)
+        tokens = getattr(usage, "total_tokens", None) if usage is not None else None
+        result = {"content": content, "tokens": tokens}
+        await response_cache.set_response_cache(
+            x_bgp_user_id, model, prompt, result, system_instruction, parameters
+        )
+        return {"source": "upstream", "language": language, "model": model, "data": result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Cached inference failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Inference failed. Check service configuration.") from None
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
