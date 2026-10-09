@@ -84,6 +84,7 @@ async def normalize_prompt_with_audit(prompt: str, request: Request) -> str:
         return normalized
     except HTTPException as exc:
         if exc.status_code in (400, 413, 422):
+            SECURITY_INFRACTIONS_TOTAL.labels("input_guardrail_rejection", request.url.path).inc()
             client_ip = request.client.host if request.client else "unknown"
             try:
                 await audit_store.log_security_alert(
@@ -120,6 +121,7 @@ async def fetch_security_audit_trails(
     if not supplied or not hmac.compare_digest(supplied, expected):
         client_ip = request.client.host if request.client else "unknown"
         await security_alerts.record_auth_failure(client_ip, request.url.path)
+        SECURITY_INFRACTIONS_TOTAL.labels("audit_endpoint_auth_failure", request.url.path).inc()
         try:
             await audit_store.log_security_alert(
                 client_ip,
@@ -156,6 +158,12 @@ MODEL_TOKENS_TOTAL = Counter(
     "bharatgpilot_model_tokens_total",
     "Provider-reported model tokens used by non-streaming inference.",
     ["model", "token_type"],
+)
+
+SECURITY_INFRACTIONS_TOTAL = Counter(
+    "bharatgpilot_security_infractions_total",
+    "Count of security-related request rejections; labels intentionally avoid client IPs and user IDs.",
+    ["infraction_type", "endpoint"],
 )
 
 
@@ -239,6 +247,7 @@ async def require_research_token(
     if not supplied or not hmac.compare_digest(supplied, expected):
         client_ip = connection.client.host if connection.client else "unknown"
         await security_alerts.record_auth_failure(client_ip, connection.url.path)
+        SECURITY_INFRACTIONS_TOTAL.labels("service_auth_failure", connection.url.path).inc()
         try:
             await audit_store.log_security_alert(
                 client_ip,
