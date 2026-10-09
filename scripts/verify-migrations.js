@@ -51,7 +51,7 @@ try {
 
   const docA = await pool.query(
     "INSERT INTO knowledge_documents(user_id,title,source_name,character_count,chunk_count) VALUES($1,$2,$3,$4,$5) RETURNING id",
-    [userA, "Disposable migration check A", "ci-test", 34, 1]
+    [userA, "Disposable migration check A", "ci-test", 38, 1]
   );
   const docB = await pool.query(
     "INSERT INTO knowledge_documents(user_id,title,source_name,character_count,chunk_count) VALUES($1,$2,$3,$4,$5) RETURNING id",
