@@ -11,6 +11,13 @@ services:
       BGP_REDIS_URL: ${BGP_REDIS_URL:-}
       BGP_RESPONSE_CACHE_ENABLED: ${BGP_RESPONSE_CACHE_ENABLED:-true}
       BGP_RESPONSE_CACHE_TTL: ${BGP_RESPONSE_CACHE_TTL:-300}
+      BGP_RAG_EMBEDDING_MODEL: ${BGP_RAG_EMBEDDING_MODEL:-}
+      BGP_RAG_VECTOR_SIZE: ${BGP_RAG_VECTOR_SIZE:-1536}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY in the environment}
     expose:
@@ -91,7 +98,7 @@ services:
 
 networks:
   app-internal:
-    internal: true
+    driver: bridge
   monitoring:
     internal: true
 
