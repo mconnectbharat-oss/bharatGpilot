@@ -122,3 +122,6 @@ desktop.ini
 
 # Optional package manager files
 # Keep package-lock.json for reproducible installs.
+
+# Local MongoDB backup archives contain sensitive database records
+cluster_backups/
