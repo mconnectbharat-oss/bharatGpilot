@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 200" width="680" height="200">
+  <g transform="translate(-360,-280)">
+    <path d="M480 372 C500 355 512 330 484 318 C452 304 404 326 400 370 C396 416 440 440 480 424 C500 416 500 404 486 402 L455 402" fill="none" stroke="#F7F3EA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M483 370 C503 352 515 328 487 316 C455 302 407 324 403 368 C399 414 443 438 483 422" fill="none" stroke="#F7F3EA" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  </g>
+  <text x="170" y="108" font-family="Helvetica, Arial, sans-serif" font-size="56" font-weight="500" fill="#F7F3EA">BharatGPilot</text>
+  <text x="172" y="150" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="500" fill="#F4A259" letter-spacing="2">Agentic AI</text>
+</svg>
