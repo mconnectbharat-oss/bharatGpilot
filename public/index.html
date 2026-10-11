@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -15,152 +16,205 @@
 #voice-language{max-width:100px;border:1px solid var(--border);border-radius:8px;background:#0c111d;color:var(--text);padding:7px 3px;font-size:10px}
 .voice-status{min-height:14px;margin:7px 4px 0;color:var(--muted);font-size:10px;line-height:1.4}
 @media(max-width:460px){#voice-language{max-width:76px;font-size:9px}.voice{min-width:32px}}
-</style></head>
-<body><div class="app">
-<header class="top"><div class="brand"><button class="menu" id="menu">☰</button><picture><source srcset="/assets/bharatgpilot-lockup-dark.svg" media="(prefers-color-scheme: dark)"><img class="brand-logo" src="/assets/bharatgpilot-lockup.svg" alt="BharatGPilot Agentic AI" height="42"></picture><span class="pill">AI COPILOT</span></div><div class="live"><span class="dot"></span><span class="pill" id="status">Ready</span><span class="user-chip" id="user-chip"></span><button class="auth" id="github-button" style="display:none">Connect GitHub</button><button class="auth" id="auth-button">Sign in</button><span class="pill">IN</span></div></header>
-<div class="body">
-<aside class="side" id="side"><div class="nav"><button class="new" id="new">＋ New investigation</button></div><div class="label">Workspace</div><div class="item active">⌂ &nbsp; Copilot</div><div class="item">⌕ &nbsp; Search repositories</div><div class="item">◈ &nbsp; Explore</div><div class="item">◎ &nbsp; Agents</div><div class="label">Recent</div><div class="item">◌ &nbsp; bharatGpilot</div><div class="item">◌ &nbsp; Repository health</div><div class="label">Safety</div><div class="item">✓ &nbsp; Evidence first</div><div class="item">▣ &nbsp; Action policy</div><div class="foot">◉ Autopilot guarded by verification</div></aside>
-<main class="main"><div class="workspace">
-<section class="hero"><div class="eyebrow">Open-source intelligence cockpit</div><h1>Good morning, Explorer</h1><p>Where shall we route today? BharatGPilot can inspect GitHub repositories, separate evidence from inference, and help you decide what to do next.</p></section>
-<section class="workspace-card">
-<div class="greeting"><div class="robot">🤖</div><div><h3>Your open-source copilot</h3><p>EVIDENCE-FIRST ROUTING</p></div></div>
-<div class="prompt"><input id="prompt" placeholder="Ask anything — e.g. What does facebook/react do?"><select id="voice-language" aria-label="Voice typing language" title="Voice typing language"><option value="en-IN">English</option><option value="hi-IN">हिन्दी</option><option value="bn-IN">বাংলা</option><option value="ta-IN">தமிழ்</option><option value="mr-IN">मराठी</option></select><button class="voice" id="voice-button" type="button" aria-pressed="false" title="Start voice typing">🎙</button><button class="send" id="send" title="Send message">↑</button></div><div id="voice-status" class="voice-status" role="status" aria-live="polite">Voice typing: ready. Tap the microphone, speak, then say “send message”.</div>
-<div class="context-list">
-<button class="context" data-prompt="What does facebook/react do?"><b>📐 Explain a GitHub repository</b><span>→</span></button>
-<button class="context" data-prompt="Check the health of mconnectbharat-oss/bharatGpilot"><b>⛽ Check repository health</b><span>→</span></button>
-<button class="context" data-prompt="Find contribution opportunities in mconnectbharat-oss/bharatGpilot"><b>🌦️ Find contribution opportunities</b><span>→</span></button>
-</div>
-<div class="progress hidden" id="progress"><div class="progress-head"><span>🔄 ORCHESTRATING...</span><span id="percentage">0%</span></div><div class="track"><div class="fill" id="fill"></div></div></div>
-<div class="bottom-nav"><span class="active">● Hub</span><span>Nodes</span><span>Memory</span><span class="vault-tab" id="vault-tab" role="button" tabindex="0">Vault</span></div>
-</section>
-<section class="card knowledge-panel" id="knowledge-panel">
-  <div class="eyebrow">PRIVATE KNOWLEDGE VAULT</div>
-  <h3>Ground answers in your own knowledge</h3>
-  <p>Save text notes and retrieve matching evidence in chat. This version uses private PostgreSQL full-text search; it does not yet use vector embeddings or parse uploaded PDFs.</p>
-  <div class="knowledge-grid">
-    <div class="knowledge-field"><label for="knowledge-title">Document title</label><input id="knowledge-title" maxlength="200" placeholder="e.g. BharatGPilot product notes"></div>
-    <div class="knowledge-field"><label for="knowledge-source">Source label (optional)</label><input id="knowledge-source" maxlength="300" placeholder="e.g. planning-notes.txt"></div>
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="brand">
+    <button class="menu" id="menu">☰</button>
+    <picture>
+      <source srcset="/assets/bharatgpilot-lockup-dark.svg" media="(prefers-color-scheme: dark)">
+      <img class="brand-logo" src="/assets/bharatgpilot-lockup.svg" alt="BharatGPilot Agentic AI" height="42">
+    </picture>
+    <span class="pill">AI COPILOT</span>
   </div>
-  <div class="knowledge-field"><label for="knowledge-content">Text to save (max 100,000 characters)</label><textarea id="knowledge-content" maxlength="100000" placeholder="Paste trusted notes, documentation, or project context here."></textarea></div>
-  <div class="knowledge-actions"><button class="knowledge-button" id="knowledge-save" type="button">Save to vault</button></div>
-  <div class="knowledge-status" id="knowledge-status" role="status" aria-live="polite">Sign in to manage your private knowledge vault.</div>
-  <div id="knowledge-documents"></div>
-  <div class="knowledge-field"><label for="knowledge-query">Search your saved knowledge</label><input id="knowledge-query" maxlength="1000" placeholder="Search for a concept or phrase"></div>
-  <div class="knowledge-actions"><button class="knowledge-button" id="knowledge-search-button" type="button">Search knowledge</button></div>
-  <div class="knowledge-results" id="knowledge-results"></div>
-</section>
-<section class="paywall" id="paywall-panel"><div class="paywall-title">Security & License Gateway</div><h3>Evidence before action</h3><p>Repository investigations are read-only by default. Changes and deployment remain behind BharatGPilot's verification and action gates.</p><div class="paywall-grid"><div class="license"><b>✓ Evidence First</b>Claims are tied to inspected repository evidence.</div><div class="license"><b>▣ Action Guard</b>Autonomous changes require verification.</div></div></section>
-<section class="card result" id="result"><div class="head"><span>Evidence-backed result</span><span class="badge" id="result-badge">GITHUB INTELLIGENCE</span></div><pre class="output" id="output"></pre></section>
-<section class="card"><div class="head"><span>Investigation trace</span><span id="trace">Idle</span></div><div class="steps" id="steps"><div class="step"><span>○</span>Waiting for an investigation</div></div></section>
-</div></main>
-<aside class="side right"><div class="righthead"><h2>Evidence & execution</h2><p>Claims stay tied to evidence.</p></div><div class="metric"><div class="row"><span>Direct evidence</span><strong id="coverage">—</strong></div><div class="bar"><i id="bar"></i></div></div><div class="card" style="margin:12px"><div class="head">Agent pipeline<span class="badge">GUARDED</span></div><div class="agent"><b>Planner</b><span>scope + signals</span></div><div class="agent"><b>Researcher</b><span>GitHub evidence</span></div><div class="agent"><b>Repository analyst</b><span>structure + health</span></div><div class="agent"><b>Verifier</b><span>claim evidence</span></div></div><div class="metric"><div class="row"><span>Action boundary</span><strong style="color:#55d982">VERIFIED FIRST</strong></div><p style="color:#68768b;line-height:1.5">Autonomous changes require direct evidence and verification.</p></div></aside>
-</div></div>
-<div class="modal" id="auth-modal" aria-hidden="true"><section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title"><h2 id="auth-title">Sign in to BharatGPilot</h2><p id="auth-subtitle">Use your email and a strong password. Google/phone sign-in is not enabled yet, so the UI will never pretend it is.</p><form class="auth-form" id="auth-form"><label>Email<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com"></label><label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="12" required placeholder="At least 12 characters"></label><label id="confirm-label" style="display:none">Re-enter password<input id="auth-confirm" type="password" autocomplete="new-password" minlength="12" placeholder="Repeat your password"></label><div class="auth-msg" id="auth-msg"></div><div class="auth-actions"><button class="auth-primary" id="auth-submit" type="submit">Sign in</button><button class="auth-secondary" id="auth-toggle" type="button">Create account</button><button class="auth-secondary" id="auth-close" type="button">Close</button></div></form></section></div>
+  <div class="live">
+    <span class="dot"></span>
+    <span class="pill" id="status">Ready</span>
+    <span class="user-chip" id="user-chip"></span>
+    <button class="auth" id="github-button" style="display:none">Connect GitHub</button>
+    <button class="auth" id="auth-button">Sign in</button>
+    <span class="pill">IN</span>
+  </div>
+</header>
+
+<div class="body">
+  <aside class="side" id="side">
+    <div class="nav"><button class="new" id="new">＋ New investigation</button></div>
+    <div class="label">Workspace</div>
+    <div class="item active">⌂ &nbsp; Copilot</div>
+    <div class="item">⌕ &nbsp; Search repositories</div>
+    <div class="item">◈ &nbsp; Explore</div>
+    <div class="item">◎ &nbsp; Agents</div>
+    <div class="label">Recent</div>
+    <div class="item">◌ &nbsp; bharatGpilot</div>
+    <div class="item">◌ &nbsp; Repository health</div>
+    <div class="label">Safety</div>
+    <div class="item">✓ &nbsp; Evidence first</div>
+    <div class="item">▣ &nbsp; Action policy</div>
+    <div class="foot">◉ Autopilot guarded by verification</div>
+  </aside>
+
+  <main class="main">
+    <div class="workspace">
+      <section class="hero">
+        <div class="eyebrow">Open-source intelligence cockpit</div>
+        <h1>Good morning, Explorer</h1>
+        <p>Where shall we route today? Inspect repos, separate evidence from inference, and decide what to do next.</p>
+      </section>
+
+      <section class="workspace-card">
+        <div class="greeting">
+          <div class="robot">🤖</div>
+          <div>
+            <h3>Your open-source copilot</h3>
+            <p>EVIDENCE-FIRST ROUTING</p>
+          </div>
+        </div>
+
+        <div class="prompt">
+          <input id="prompt" placeholder="Ask anything — e.g. What does facebook/react do?">
+          <select id="voice-language" aria-label="Voice typing language" title="Voice typing language">
+            <option value="en-IN">English</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="bn-IN">বাংলা</option>
+            <option value="ta-IN">தமிழ்</option>
+            <option value="mr-IN">मराठी</option>
+          </select>
+          <button class="voice" id="voice-button" type="button" aria-pressed="false" title="Start voice typing">🎙</button>
+          <button class="send" id="send" title="Send message">↑</button>
+        </div>
+        <div id="voice-status" class="voice-status" role="status" aria-live="polite">Voice ready. Tap 🎙, speak, then say “send message”.</div>
+
+        <div class="context-list">
+          <button class="context" data-prompt="What does facebook/react do?"><b>📐 Explain a GitHub repository</b><span>→</span></button>
+          <button class="context" data-prompt="Check the health of mconnectbharat-oss/bharatGpilot"><b>⛽ Check repository health</b><span>→</span></button>
+          <button class="context" data-prompt="Find contribution opportunities in mconnectbharat-oss/bharatGpilot"><b>🌦️ Find contribution opportunities</b><span>→</span></button>
+        </div>
+
+        <div class="progress hidden" id="progress">
+          <div class="progress-head"><span>🔄 ORCHESTRATING...</span><span id="percentage">0%</span></div>
+          <div class="track"><div class="fill" id="fill"></div></div>
+        </div>
+
+        <div class="bottom-nav">
+          <span class="active">● Hub</span>
+          <span>Nodes</span>
+          <span>Memory</span>
+          <span class="vault-tab" id="vault-tab" role="button" tabindex="0">Vault</span>
+        </div>
+      </section>
+
+      <section class="card knowledge-panel" id="knowledge-panel">
+        <div class="eyebrow">PRIVATE KNOWLEDGE VAULT</div>
+        <h3>Ground answers in your own knowledge</h3>
+        <p>Save notes and retrieve matching evidence. Uses private full-text search (no embeddings or PDF parsing yet).</p>
+
+        <div class="knowledge-grid">
+          <div class="knowledge-field">
+            <label for="knowledge-title">Document title</label>
+            <input id="knowledge-title" maxlength="200" placeholder="e.g. BharatGPilot product notes">
+          </div>
+          <div class="knowledge-field">
+            <label for="knowledge-source">Source label (optional)</label>
+            <input id="knowledge-source" maxlength="300" placeholder="e.g. planning-notes.txt">
+          </div>
+        </div>
+
+        <div class="knowledge-field">
+          <label for="knowledge-content">Text to save (max 100,000 characters)</label>
+          <textarea id="knowledge-content" maxlength="100000" placeholder="Paste trusted notes, documentation, or project context here."></textarea>
+        </div>
+
+        <div class="knowledge-actions">
+          <button class="knowledge-button" id="knowledge-save" type="button">Save to vault</button>
+        </div>
+
+        <div class="knowledge-status" id="knowledge-status" role="status" aria-live="polite">Sign in to manage your private knowledge vault.</div>
+        <div id="knowledge-documents"></div>
+
+        <div class="knowledge-field">
+          <label for="knowledge-query">Search your saved knowledge</label>
+          <input id="knowledge-query" maxlength="1000" placeholder="Search for a concept or phrase">
+        </div>
+        <div class="knowledge-actions">
+          <button class="knowledge-button" id="knowledge-search-button" type="button">Search knowledge</button>
+        </div>
+        <div class="knowledge-results" id="knowledge-results"></div>
+      </section>
+
+      <section class="paywall" id="paywall-panel">
+        <div class="paywall-title">Security & License Gateway</div>
+        <h3>Evidence before action</h3>
+        <p>Repository investigations are read-only by default. Changes and deployment remain behind BharatGPilot's verification and action gates.</p>
+        <div class="paywall-grid">
+          <div class="license"><b>✓ Evidence First</b>Claims are tied to inspected repository evidence.</div>
+          <div class="license"><b>▣ Action Guard</b>Autonomous changes require verification.</div>
+        </div>
+      </section>
+
+      <section class="card result" id="result">
+        <div class="head">
+          <span>Evidence-backed result</span>
+          <span class="badge" id="result-badge">GITHUB INTELLIGENCE</span>
+        </div>
+        <pre class="output" id="output"></pre>
+      </section>
+
+      <section class="card">
+        <div class="head">
+          <span>Investigation trace</span>
+          <span id="trace">Idle</span>
+        </div>
+        <div class="steps" id="steps">
+          <div class="step"><span>○</span>Waiting for an investigation</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <aside class="side right">
+    <div class="righthead">
+      <h2>Evidence & execution</h2>
+      <p>Claims stay tied to evidence.</p>
+    </div>
+    <div class="metric">
+      <div class="row"><span>Direct evidence</span><strong id="coverage">—</strong></div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+    <div class="card" style="margin:12px">
+      <div class="head">Agent pipeline<span class="badge">GUARDED</span></div>
+      <div class="agent"><b>Planner</b><span>scope + signals</span></div>
+      <div class="agent"><b>Researcher</b><span>GitHub evidence</span></div>
+      <div class="agent"><b>Repository analyst</b><span>structure + health</span></div>
+      <div class="agent"><b>Verifier</b><span>claim evidence</span></div>
+    </div>
+    <div class="metric">
+      <div class="row"><span>Action boundary</span><strong style="color:#55d982">VERIFIED FIRST</strong></div>
+      <p style="color:#68768b;line-height:1.5">Autonomous changes require direct evidence and verification.</p>
+    </div>
+  </aside>
+</div>
+</div>
+
+<div class="modal" id="auth-modal" aria-hidden="true">
+  <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <h2 id="auth-title">Sign in to BharatGPilot</h2>
+    <p id="auth-subtitle">Use email + strong password. Google/phone sign-in is not enabled yet.</p>
+    <form class="auth-form" id="auth-form">
+      <label>Email<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+      <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="12" required placeholder="At least 12 characters"></label>
+      <label id="confirm-label" style="display:none">Re-enter password<input id="auth-confirm" type="password" autocomplete="new-password" minlength="12" placeholder="Repeat your password"></label>
+      <div class="auth-msg" id="auth-msg"></div>
+      <div class="auth-actions">
+        <button class="auth-primary" id="auth-submit" type="submit">Sign in</button>
+        <button class="auth-secondary" id="auth-toggle" type="button">Create account</button>
+        <button class="auth-secondary" id="auth-close" type="button">Close</button>
+      </div>
+    </form>
+  </section>
+</div>
+
 <script>
-const $=s=>document.querySelector(s), side=$("#side");
-const authModal=$("#auth-modal"), authButton=$("#auth-button"), authForm=$("#auth-form"), authToggle=$("#auth-toggle"), authClose=$("#auth-close"), authMsg=$("#auth-msg"), authTitle=$("#auth-title"), authSubtitle=$("#auth-subtitle"), confirmLabel=$("#confirm-label"), userChip=$("#user-chip"), githubButton=$("#github-button");
-let authMode="login"; let conversationId=null;
-function setAuthMessage(message=""){authMsg.textContent=message;}
-function openAuth(mode="login"){authMode=mode;authModal.classList.add("open");authModal.setAttribute("aria-hidden","false");authTitle.textContent=mode==="login"?"Sign in to BharatGPilot":"Create your BharatGPilot account";authSubtitle.textContent=mode==="login"?"Your session is stored in a secure HttpOnly cookie.":"Create an email account with a password of at least 12 characters.";confirmLabel.style.display=mode==="register"?"block":"none";$("#auth-submit").textContent=mode==="login"?"Sign in":"Create account";authToggle.textContent=mode==="login"?"Create account":"Back to sign in";setAuthMessage("");$("#auth-email").focus();}
-function closeAuth(){authModal.classList.remove("open");authModal.setAttribute("aria-hidden","true");setAuthMessage("");}
-async function refreshIdentity(){try{const r=await fetch("/api/auth/me",{credentials:"same-origin"});if(!r.ok)throw new Error();const d=await r.json();userChip.textContent=d.user.email;userChip.classList.add("show");authButton.textContent="Log out";githubButton.style.display="inline-block";const g=await fetch("/api/github/identity",{credentials:"same-origin"});if(g.ok){const gd=await g.json();if(gd.github)githubButton.textContent="GitHub: "+gd.github.github_login;}}catch{userChip.classList.remove("show");authButton.textContent="Sign in";githubButton.style.display="none";}finally{await loadKnowledge();}}
-authButton.onclick=async()=>{if(authButton.textContent==="Log out"){await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin"});conversationId=null;await refreshIdentity();$("#status").textContent="Ready";}else openAuth("login");};
-githubButton.onclick=async()=>{try{const r=await fetch("/api/github/connect",{credentials:"same-origin"});const d=await r.json();if(!r.ok)throw Error(d.error||"Unable to connect GitHub.");location.href=d.url;}catch(e){setAuthMessage(e.message);openAuth("login");}};
-authToggle.onclick=()=>openAuth(authMode==="login"?"register":"login");authClose.onclick=closeAuth;authModal.onclick=e=>{if(e.target===authModal)closeAuth()};
-authForm.onsubmit=async e=>{e.preventDefault();setAuthMessage("");const email=$("#auth-email").value.trim(),password=$("#auth-password").value,confirm=$("#auth-confirm").value;if(authMode==="register"&&password!==confirm){setAuthMessage("Passwords do not match.");return}$("#auth-submit").disabled=true;try{const endpoint=authMode==="login"?"/api/auth/login":"/api/auth/register";const r=await fetch(endpoint,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok)throw Error(d.error||"Authentication failed.");closeAuth();conversationId=null;await refreshIdentity();$("#status").textContent="Signed in";}catch(err){setAuthMessage(err.message);}finally{$("#auth-submit").disabled=false;}};
-$("#menu").onclick=()=>side.classList.toggle("open");
-document.querySelectorAll(".context").forEach(x=>x.onclick=()=>{$("#prompt").value=x.dataset.prompt;$("#prompt").focus()});
-$("#new").onclick=()=>{conversationId=null;$("#prompt").value="";$("#result").style.display="none";$("#steps").innerHTML="<div class=\"step\"><span>○</span>Waiting for an investigation</div>";$("#prompt").focus()};
-function setProgress(n,label){$("#percentage").textContent=n+"%";$("#fill").style.width=n+"%";if(label)$("#trace").textContent=label;}
-async function run(){const input=$("#prompt").value.trim();if(!input)return;$("#progress").classList.remove("hidden");$("#result").style.display="none";$("#status").textContent="Investigating";$("#send").disabled=true;$("#steps").innerHTML="";setProgress(15,"Understanding");$("#steps").insertAdjacentHTML("beforeend","<div class=\"step\"><span>✓</span>Understanding request and detecting repository</div>");await new Promise(r=>setTimeout(r,120));setProgress(35,"Inspecting GitHub");$("#steps").insertAdjacentHTML("beforeend","<div class=\"step\"><span>✓</span>Inspecting repository evidence</div>");try{const r=await fetch("/api/pilot/chat",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({conversationId,messages:[{role:"user",content:input}]})});const d=await r.json();if(r.status===401){openAuth("login");throw Error("Sign in required to use the Copilot.");}if(!r.ok)throw Error(d.error||"Request failed");conversationId=d.conversationId||conversationId;setProgress(75,"Verifying evidence");$("#steps").insertAdjacentHTML("beforeend","<div class=\"step\"><span>✓</span>Separating direct evidence from inference</div>");await new Promise(r=>setTimeout(r,100));setProgress(100,"Complete");$("#steps").insertAdjacentHTML("beforeend","<div class=\"step\"><span>✓</span>Grounded answer returned</div>");const answerText=d.answer||JSON.stringify(d,null,2);const knowledgeSources=d.knowledge?.sources||[];$("#output").textContent=knowledgeSources.length?answerText+"\n\nSaved-knowledge sources:\n"+knowledgeSources.map(s=>"["+s.citation+"] "+s.title+" — "+s.sourceName+", chunk "+s.chunkIndex).join("\n"):answerText;$("#result").style.display="block";if(d.github?.evidence){const e=d.github.evidence,total=(e.direct||0)+(e.indirect||0)+(e.noEvidence||0);const pct=total?Math.round((e.direct||0)/total*100):0;$("#coverage").textContent=pct+"%";$("#bar").style.width=pct+"%";}else $("#coverage").textContent=d.provider==="github-intelligence"?"Verified":"AI";$("#status").textContent="Ready";}catch(e){setProgress(100,"Needs attention");$("#output").textContent=e.message;$("#result").style.display="block";$("#status").textContent="Needs attention";}finally{$("#send").disabled=false;}}
-async function loadKnowledge(){
-  const list=$("#knowledge-documents"),status=$("#knowledge-status"),results=$("#knowledge-results");
-  if(!userChip.classList.contains("show")){list.replaceChildren();results.replaceChildren();status.textContent="Sign in to manage your private knowledge vault.";return;}
-  list.replaceChildren();status.textContent="Loading saved knowledge…";
-  try{
-    const response=await fetch("/api/pilot/knowledge",{credentials:"same-origin"});
-    const data=await response.json();
-    if(!response.ok)throw Error(data.error||"Knowledge library unavailable.");
-    const docs=data.documents||[];
-    status.textContent=docs.length?docs.length+" saved document(s).":"No saved documents yet."; 
-    docs.forEach(doc=>{
-      const item=document.createElement("div");item.className="knowledge-item";
-      const details=document.createElement("div");
-      const title=document.createElement("strong");title.textContent=doc.title;
-      const meta=document.createElement("div");meta.className="knowledge-meta";meta.textContent=doc.chunk_count+" chunks · "+doc.character_count+" characters · "+(doc.source_name||"Text entry");
-      details.append(title,meta);
-      const remove=document.createElement("button");remove.className="knowledge-button danger";remove.type="button";remove.textContent="Delete";
-      remove.onclick=async()=>{if(!confirm("Delete this saved knowledge document?"))return;remove.disabled=true;try{const res=await fetch("/api/pilot/knowledge/"+encodeURIComponent(doc.id),{method:"DELETE",credentials:"same-origin"});if(!res.ok){const err=await res.json().catch(()=>({}));throw Error(err.error||"Delete failed.");}await loadKnowledge();}catch(error){status.textContent=error.message;remove.disabled=false;}};
-      item.append(details,remove);list.append(item);
-    });
-  }catch(error){status.textContent=error.message||"Knowledge library unavailable.";}
-}
-$("#knowledge-save").onclick=async()=>{
-  if(!userChip.classList.contains("show")){openAuth("login");return;}
-  const title=$("#knowledge-title").value.trim(),content=$("#knowledge-content").value,sourceName=$("#knowledge-source").value.trim();
-  const button=$("#knowledge-save"),status=$("#knowledge-status");
-  if(!title||!content.trim()){status.textContent="Enter a document title and some text first.";return;}
-  button.disabled=true;status.textContent="Saving private knowledge…";
-  try{const response=await fetch("/api/pilot/knowledge",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,content,sourceName})});const data=await response.json();if(!response.ok)throw Error(data.error||"Save failed.");$("#knowledge-content").value="";status.textContent="Saved "+data.document.title+".";await loadKnowledge();}
-  catch(error){status.textContent=error.message||"Could not save this document.";}finally{button.disabled=false;}
-};
-$("#knowledge-search-button").onclick=async()=>{
-  if(!userChip.classList.contains("show")){openAuth("login");return;}
-  const query=$("#knowledge-query").value.trim(),status=$("#knowledge-status"),results=$("#knowledge-results");results.replaceChildren();
-  if(!query){status.textContent="Enter a search query.";return;}
-  status.textContent="Searching saved knowledge…";
-  try{const response=await fetch("/api/pilot/knowledge/search",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,limit:5})});const data=await response.json();if(!response.ok)throw Error(data.error||"Search failed.");
-    const matches=data.results||[];status.textContent=matches.length?matches.length+" evidence chunk(s) found.":"No evidence found in the saved knowledge."; 
-    matches.forEach(item=>{const card=document.createElement("article");card.className="knowledge-result";const title=document.createElement("strong");title.textContent="["+item.citation+"] "+item.title+" · chunk "+item.chunkIndex;const source=document.createElement("div");source.className="knowledge-meta";source.textContent=item.sourceName;const excerpt=document.createElement("p");excerpt.textContent=item.content;card.append(title,source,excerpt);results.append(card);});
-  }catch(error){status.textContent=error.message||"Knowledge search failed.";}
-};
-$("#vault-tab").onclick=()=>$("#knowledge-panel").scrollIntoView({behavior:"smooth",block:"start"});
-$("#vault-tab").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#knowledge-panel").scrollIntoView({behavior:"smooth",block:"start"});}};
-$("#send").onclick=run;$("#prompt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();run();}});
-const voiceButton=$("#voice-button"),voiceStatus=$("#voice-status"),voiceLanguage=$("#voice-language"),voiceInput=$("#prompt");
-const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-let voiceRecognition=null,voiceListening=false;
-function setVoiceStatus(message){voiceStatus.textContent=message;}
-if(!SpeechRecognition){
-  voiceButton.disabled=true;
-  voiceButton.title="Speech recognition is not supported in this browser";
-  setVoiceStatus("Voice typing is not supported by this browser. Try the latest Chrome on your computer.");
-}else{
-  voiceRecognition=new SpeechRecognition();
-  voiceRecognition.continuous=true;
-  voiceRecognition.interimResults=false;
-  voiceRecognition.onstart=()=>{voiceListening=true;voiceButton.setAttribute("aria-pressed","true");voiceButton.title="Stop voice typing";setVoiceStatus("Listening in "+voiceLanguage.options[voiceLanguage.selectedIndex].text+". Speak naturally; say “send message” to submit.");};
-  voiceRecognition.onresult=(event)=>{
-    for(let i=event.resultIndex;i<event.results.length;i++){
-      if(!event.results[i].isFinal)continue;
-      const spoken=event.results[i][0].transcript.trim();
-      if(!spoken)continue;
-      const command=spoken.toLowerCase().replace(/[.!?]+$/,"").trim();
-      if(command==="stop listening"||command==="stop voice typing"){
-        voiceRecognition.stop();setVoiceStatus("Voice typing stopped.");return;
-      }
-      if(command==="send message"||command==="submit message"||command==="send it"){
-        const message=voiceInput.value.trim();
-        if(!message){setVoiceStatus("Nothing to send yet. Speak your message first.");continue;}
-        voiceRecognition.stop();setVoiceStatus("Sending your message…");run();return;
-      }
-      voiceInput.value=(voiceInput.value.trim()?voiceInput.value.trim()+" ":"")+spoken;
-      voiceInput.dispatchEvent(new Event("input",{bubbles:true}));
-      setVoiceStatus("Added speech to the message. Say “send message” to submit, or “stop listening” to stop.");
-    }
-  };
-  voiceRecognition.onerror=(event)=>{
-    const messages={not-allowed:"Microphone permission was denied. Allow microphone access in your browser settings.", "service-not-allowed":"Speech recognition is blocked by the browser.", "no-speech":"No speech was detected. Tap the microphone to try again.", network:"Speech recognition needs a working network connection."};
-    setVoiceStatus(messages[event.error]||("Voice typing error: "+event.error+"."));
-  };
-  voiceRecognition.onend=()=>{voiceListening=false;voiceButton.setAttribute("aria-pressed","false");voiceButton.title="Start voice typing";if(voiceStatus.textContent.startsWith("Listening"))setVoiceStatus("Voice typing stopped. Tap the microphone to start again.");};
-  voiceButton.addEventListener("click",()=>{
-    if(voiceListening){voiceRecognition.stop();setVoiceStatus("Stopping voice typing…");return;}
-    voiceRecognition.lang=voiceLanguage.value;
-    try{voiceRecognition.start();setVoiceStatus("Requesting microphone access…");}
-    catch(error){setVoiceStatus("Could not start voice typing. Wait a moment and try again.");}
-  });
-  voiceLanguage.addEventListener("change",()=>{if(voiceListening){voiceRecognition.stop();setVoiceStatus("Language changed. Tap the microphone to resume.");}});
-}
-refreshIdentity();
-</script></body></html>
+const $ = s => document.quer
