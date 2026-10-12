@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "title": "Image-derived knowledge",
-  "description": "Structured notes transcribed from five project reference images. These are visual observations, not independent validation of the named tools or research claims.",
+  "description": "Structured notes transcribed from six project reference images. These are visual observations, not independent validation of the named tools or research claims.",
   "items": [
     {
       "id": "iac-basics",
@@ -98,6 +98,191 @@
         "benchmarks",
         "full-stack"
       ]
+    },
+    {
+      "id": "agentic-ai-roadmap-2025",
+      "title": "Agentic AI Roadmap 2025",
+      "sourceImage": "1000015289.gif",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription; tiny labels may be incomplete",
+      "priorityLegend": {
+        "mustDo": "Red outline",
+        "optional": "Blue outline",
+        "toolsTech": "Orange outline"
+      },
+      "stages": [
+        {
+          "name": "Programming & Prompting",
+          "topics": [
+            "Programming languages: Python, Java, TypeScript, Shell/Bash",
+            "API requests (HTTP/JSON)",
+            "File handling",
+            "Async programming",
+            "Web scraping",
+            "Prompting concepts",
+            "Context management",
+            "Chain-of-thought prompts (as labeled in the image)",
+            "Multi-agent prompting",
+            "Goal-oriented prompting",
+            "Self-critique and retry loops",
+            "Reflexion looping",
+            "Task-planning prompts",
+            "Role prompting"
+          ]
+        },
+        {
+          "name": "Basics of AI Agents",
+          "topics": [
+            "What are AI agents?",
+            "Autonomous vs. semi-autonomous agents",
+            "Agent architectures (ReAct, G, CAMEL, AutoGPT as labeled)",
+            "Model Context Protocol (MCP)",
+            "A2A protocol",
+            "Goal decomposition",
+            "Task-planning algorithms",
+            "Decision-making policies",
+            "Action-planning loops",
+            "Multi-agent collaboration",
+            "Self-reflection and feedback loops"
+          ]
+        },
+        {
+          "name": "LLMs & APIs",
+          "topics": [
+            "OpenAI (GPT-4, GPT-4o as labeled)",
+            "Claude, Gemini, Mistral",
+            "Open-source LLMs (LLaMA, DeepSeek, Falcon as labeled)",
+            "API authentication",
+            "Rate limiting",
+            "Tool/function calling",
+            "Tool invocation and output parsing",
+            "Prompt chaining via APIs"
+          ]
+        },
+        {
+          "name": "Tool Use & Integration",
+          "topics": [
+            "Tool-use system",
+            "Memory integration",
+            "External API calling",
+            "File reader/writer tools",
+            "Python execution tools",
+            "Search and retrieval tools",
+            "Calculator and code interpreter",
+            "Web browsing tools"
+          ]
+        },
+        {
+          "name": "Agent Frameworks",
+          "topics": [
+            "LangChain",
+            "AutoGen",
+            "CrewAI",
+            "AgentOps",
+            "Haystack",
+            "Semantic Kernel",
+            "SuperAGI",
+            "LlamaIndex"
+          ]
+        },
+        {
+          "name": "Orchestration & Automation",
+          "topics": [
+            "n8n",
+            "Make.com",
+            "Zapier",
+            "LangGraph",
+            "DAG management",
+            "Event-based triggers",
+            "Guardrails and validations",
+            "Looping and conditional workflows"
+          ]
+        },
+        {
+          "name": "Memory Management",
+          "topics": [
+            "Short-term memory",
+            "Long-term memory",
+            "Episodic memory",
+            "Vector stores",
+            "Pinecone",
+            "Weaviate",
+            "Chroma",
+            "FAISS"
+          ]
+        },
+        {
+          "name": "Knowledge & RAG",
+          "topics": [
+            "RAG (Retrieval-Augmented Generation)",
+            "Embedding models",
+            "Custom data loaders",
+            "Document indexing",
+            "Query refinement",
+            "Hybrid search",
+            "LangChain RAG",
+            "LlamaIndex RAG"
+          ]
+        },
+        {
+          "name": "Deployment",
+          "topics": [
+            "API deployment",
+            "Serverless functions",
+            "FastAPI / Streamlit / Gradio",
+            "Docker",
+            "Kubernetes",
+            "Vector DB hosting",
+            "Agent hosting services (Replit, Modal, etc. as labeled)"
+          ]
+        },
+        {
+          "name": "Monitoring & Evaluation",
+          "topics": [
+            "Agent evaluation metrics",
+            "Human-in-the-loop feedback",
+            "LangSmith",
+            "Logging/tracing",
+            "Auto-evaluation loops",
+            "Prometheus",
+            "Grafana",
+            "Custom dashboards"
+          ]
+        },
+        {
+          "name": "Security & Governance",
+          "topics": [
+            "Prompt-injection protection",
+            "API key management",
+            "User authentication",
+            "Role-based access control (RBAC)",
+            "Output filtering",
+            "Red-team testing",
+            "Data privacy and compliance"
+          ]
+        }
+      ],
+      "tags": [
+        "agentic-ai",
+        "learning-roadmap",
+        "llms",
+        "agents",
+        "mcp",
+        "a2a",
+        "tool-use",
+        "frameworks",
+        "orchestration",
+        "memory",
+        "rag",
+        "deployment",
+        "evaluation",
+        "security"
+      ],
+      "limitations": [
+        "Priority colors are transcribed from the legend; the image alone does not establish that every topic's priority is objectively correct.",
+        "Tool names and model versions reflect the 2025 image and may be outdated.",
+        "This is a visual transcription, not a validated curriculum or endorsement of listed frameworks."
+      ]
     }
   ],
   "interpretation": [
@@ -105,6 +290,11 @@
       "claim": "The images together suggest a knowledge workflow connecting infrastructure automation, agent context/memory, repository-aware coding, and testing.",
       "evidenceClass": "INDIRECT",
       "rationale": "This is a synthesis across multiple images, not a statement explicitly made by any single image."
+    },
+    {
+      "claim": "The roadmap's sequence connects foundations, agent reasoning/tool use, orchestration and memory, retrieval, deployment, evaluation, and security.",
+      "evidenceClass": "INDIRECT",
+      "rationale": "This is a synthesis of the order and grouping shown across the roadmap."
     }
   ],
   "limitations": [
