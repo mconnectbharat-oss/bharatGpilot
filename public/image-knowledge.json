@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0",
+  "title": "Image-derived knowledge",
+  "description": "Structured notes transcribed from five project reference images. These are visual observations, not independent validation of the named tools or research claims.",
+  "items": [
+    {
+      "id": "iac-basics",
+      "title": "Infrastructure as Code — core concepts",
+      "sourceImage": "infrastructure-as-a-code.jpg",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription",
+      "observations": [
+        "The image groups IaC artifacts into templates, scripts, and policies.",
+        "It names Ansible, Terraform, Chef, and Puppet as tools.",
+        "It depicts network, application, storage, security, and cloud infrastructure as infrastructure domains."
+      ],
+      "tags": [
+        "infrastructure-as-code",
+        "automation",
+        "configuration-management"
+      ]
+    },
+    {
+      "id": "iac-tools",
+      "title": "Infrastructure automation tool landscape",
+      "sourceImage": "body_3_Infrastructure-as-Code-tools1.jpg",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription",
+      "observations": [
+        "The diagram places Terraform, Ansible, Chef, Puppet, AWS CloudFormation, Azure Resource Templates, and Jenkins around the IaC topic.",
+        "It also labels New Relic, Zabbix, and Nagios, indicating monitoring/observability tools in the wider landscape."
+      ],
+      "tags": [
+        "terraform",
+        "ansible",
+        "cloudformation",
+        "azure",
+        "jenkins",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "iac-landscape",
+      "title": "IaC landscape cheatsheet",
+      "sourceImage": "0063-a-cheatsheet-on-infrastructure-as-code-landscape (1).png",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription; fine print may be incomplete",
+      "observations": [
+        "The cheatsheet groups containerization, container orchestration, configuration management, and infrastructure-as-code tools.",
+        "Docker is shown in the containerization area and Kubernetes in the orchestration area.",
+        "The infrastructure-as-code section depicts developer workflows connecting code, pull requests, automation servers, and cloud or on-premises infrastructure.",
+        "The configuration-management section depicts playbooks/inventory and server provisioning workflows."
+      ],
+      "tags": [
+        "docker",
+        "kubernetes",
+        "configuration-management",
+        "deployment",
+        "cloud"
+      ]
+    },
+    {
+      "id": "context-engineering",
+      "title": "Context engineering visualised",
+      "sourceImage": "image (31).jpg",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription; source is a screenshot and some labels are small",
+      "observations": [
+        "The diagram distinguishes short-term memory from long-term memory.",
+        "Long-term memory examples include MCP servers, databases, RAG, and vector search.",
+        "The flow connects user input, prompt/context, an agent, action tools, and an answer.",
+        "The diagram presents memory and tool use as parts of a repeated agent interaction loop."
+      ],
+      "tags": [
+        "agents",
+        "context-engineering",
+        "memory",
+        "rag",
+        "mcp",
+        "tools"
+      ]
+    },
+    {
+      "id": "agentic-fullstack",
+      "title": "Agentic full-stack development and evaluation",
+      "sourceImage": "fullstack-agent-enhancing-agentic-full-stack-web-coding-via-development-oriented-testing-and-repository-back-translation-2.png",
+      "evidenceClass": "DIRECT",
+      "confidence": "visual transcription; details summarized at diagram level",
+      "observations": [
+        "The figure contrasts FullStack-Dev, FullStack-Learn, and FullStack-Bench.",
+        "It depicts planning, repository exploration, coding agents, information gathering, trajectory/back-translation, and agent trajectories.",
+        "The benchmark area separates frontend, backend, and database test cases and corresponding judge agents."
+      ],
+      "tags": [
+        "coding-agents",
+        "repository-analysis",
+        "testing",
+        "benchmarks",
+        "full-stack"
+      ]
+    }
+  ],
+  "interpretation": [
+    {
+      "claim": "The images together suggest a knowledge workflow connecting infrastructure automation, agent context/memory, repository-aware coding, and testing.",
+      "evidenceClass": "INDIRECT",
+      "rationale": "This is a synthesis across multiple images, not a statement explicitly made by any single image."
+    }
+  ],
+  "limitations": [
+    "DIRECT means the item is visibly represented in the image; it does not verify that the depiction is current or technically complete.",
+    "INDIRECT marks a synthesis or inference across image observations.",
+    "Text too small to read confidently is summarized rather than reconstructed.",
+    "These notes are a starter dataset; they do not replace source documents, citations, or technical validation."
+  ]
+}
