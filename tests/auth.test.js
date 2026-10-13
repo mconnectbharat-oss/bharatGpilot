@@ -13,3 +13,12 @@ test("login validates short passwords before requiring a database", async () => 
 test("login rejects malformed email before database access", async () => {
   await assert.rejects(() => loginUser({ email: "not-an-email", password: "a-secure-password" }), /valid email/);
 });
+
+test("registration rejects email whitespace and missing domain separator before database access", async () => {
+  for (const email of ["user name@example.com", "user@example"]) {
+    await assert.rejects(
+      () => registerUser({ email, password: "a-secure-password" }),
+      /valid email/
+    );
+  }
+});

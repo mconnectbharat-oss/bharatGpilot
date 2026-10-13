@@ -3,7 +3,7 @@ import { query } from "../services/db.js";
 const SESSION_TTL_SECONDS = Number(process.env.AUTH_SESSION_TTL_SECONDS || 604800);
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "bgp_session";
 function normalizeEmail(email) { return String(email || "").trim().toLowerCase(); }
-function assertCredentials(email,password){ const e=normalizeEmail(email); if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)) throw new Error("A valid email address is required."); if(typeof password!=="string"||password.length<12||password.length>256) throw new Error("Password must be 12–256 characters."); return e; }
+function assertCredentials(email,password){ const e=normalizeEmail(email); if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error("A valid email address is required."); if(typeof password!=="string"||password.length<12||password.length>256) throw new Error("Password must be 12–256 characters."); return e; }
 function hashPassword(password,salt=crypto.randomBytes(16).toString("hex")){ return {salt,hash:crypto.scryptSync(password,salt,64).toString("hex")}; }
 function verifyPassword(password,salt,expectedHash){ const actual=crypto.scryptSync(password,salt,64), expected=Buffer.from(expectedHash,"hex"); return actual.length===expected.length&&crypto.timingSafeEqual(actual,expected); }
 function hashSessionToken(token){ return crypto.createHash("sha256").update(token).digest("hex"); }
