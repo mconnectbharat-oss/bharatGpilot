@@ -28,6 +28,7 @@ import { analyzeRepositorySignals } from "./src/github/repository-analysis.js";
 import { detectIntent, buildCopilotSystemPrompt } from "./src/services/intent-engine.js";
 import { buildGitHubIntelligence } from "./src/github/github-intelligence.js";
 import { listMemories, createMemory, deleteMemory } from "./src/services/agent-memory.js";
+import { addKnowledgeDocument, listKnowledgeDocuments, deleteKnowledgeDocument, searchKnowledge, buildKnowledgeContext } from "./src/services/knowledge-rag.js";
 import { dispatchAutomationEvent, getAutomationStatus } from "./src/services/n8n-automation.js";
 
 
@@ -265,10 +266,33 @@ app.post("/api/pilot/chat", requireAuth, async (req, res) => {
         console.warn("GitHub intelligence fallback:", error.message);
       }
     }
+    let knowledgeResults = [];
+    try {
+      knowledgeResults = await searchKnowledge(req.user.id, latestUserMessage?.content || "", 5);
+    } catch (error) {
+      // Knowledge retrieval must not take down ordinary chat if the optional
+      // knowledge schema has not been migrated yet or the database is degraded.
+      console.warn("Knowledge retrieval unavailable:", error.message);
+    }
+    const knowledgeContext = buildKnowledgeContext(knowledgeResults);
+    const knowledgeInstruction = knowledgeContext.instruction
+      ? `\n\n${knowledgeContext.instruction}`
+      : "";
     const hasSystemMessage = cleanMessages.some((message) => message.role === "system");
-    const enrichedMessages = hasSystemMessage
-      ? cleanMessages
-      : [{ role: "system", content: buildCopilotSystemPrompt(intent) }, ...cleanMessages];
+    let enrichedMessages;
+    if (hasSystemMessage) {
+      const systemIndex = cleanMessages.findIndex((message) => message.role === "system");
+      enrichedMessages = cleanMessages.map((message, index) =>
+        index === systemIndex
+          ? { ...message, content: `${message.content}${knowledgeInstruction}` }
+          : message
+      );
+    } else {
+      enrichedMessages = [
+        { role: "system", content: `${buildCopilotSystemPrompt(intent)}${knowledgeInstruction}` },
+        ...cleanMessages
+      ];
+    }
 
     const result = await runModelDetailed({
       provider,
@@ -287,7 +311,11 @@ app.post("/api/pilot/chat", requireAuth, async (req, res) => {
         fallbackUsed: result.fallbackUsed,
         latencyMs: result.latencyMs
       },
-      intent
+      intent,
+      knowledge: {
+        retrieval: knowledgeContext.retrieval,
+        sources: knowledgeContext.sources
+      }
     });
   } catch (error) {
     console.error("Chat error:", error.message);
@@ -327,6 +355,65 @@ app.delete("/api/pilot/memory/:id", requireAuth, async (req, res) => {
     res.status(204).end();
   } catch {
     res.status(503).json({ error: "Memory service unavailable." });
+  }
+});
+
+app.get("/api/pilot/knowledge", requireAuth, async (req, res) => {
+  try {
+    res.json({ documents: await listKnowledgeDocuments(req.user.id) });
+  } catch (error) {
+    console.error("Knowledge library unavailable:", error.message);
+    res.status(503).json({ error: "Knowledge library unavailable." });
+  }
+});
+
+app.post("/api/pilot/knowledge", requireAuth, async (req, res) => {
+  try {
+    const document = await addKnowledgeDocument(req.user.id, {
+      title: req.body?.title,
+      content: req.body?.content,
+      sourceName: req.body?.sourceName || ""
+    });
+    res.status(201).json({ document });
+  } catch (error) {
+    if (error?.code === "BGP_KNOWLEDGE_INPUT") {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error("Knowledge document save failed:", error.message);
+    res.status(503).json({ error: "Knowledge document could not be saved." });
+  }
+});
+
+app.post("/api/pilot/knowledge/search", requireAuth, async (req, res) => {
+  try {
+    const results = await searchKnowledge(req.user.id, req.body?.query || "", req.body?.limit);
+    const context = buildKnowledgeContext(results);
+    res.json({
+      retrieval: context.retrieval,
+      sources: context.sources,
+      results: results.map((result, index) => ({
+        citation: `K${index + 1}`,
+        title: result.title,
+        sourceName: result.source_name || result.title,
+        chunkIndex: Number(result.chunk_index) + 1,
+        content: result.content,
+        score: Number(result.score) || 0
+      }))
+    });
+  } catch (error) {
+    console.error("Knowledge search unavailable:", error.message);
+    res.status(503).json({ error: "Knowledge search unavailable." });
+  }
+});
+
+app.delete("/api/pilot/knowledge/:id", requireAuth, async (req, res) => {
+  try {
+    const deleted = await deleteKnowledgeDocument(req.user.id, req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Knowledge document not found." });
+    res.status(204).end();
+  } catch (error) {
+    console.error("Knowledge deletion unavailable:", error.message);
+    res.status(503).json({ error: "Knowledge deletion unavailable." });
   }
 });
 
