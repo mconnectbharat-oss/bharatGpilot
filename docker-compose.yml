@@ -1,0 +1,15 @@
+yaml
+version: '3.8'
+
+services:
+  bharat-gpilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bharat_gpilot_container
+    # Connects host terminal system keyboard streaming inputs directly inside the script
+    stdin_open: true
+    tty: true
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
